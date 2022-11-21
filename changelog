@@ -1,0 +1,8 @@
+# Changelog
+
+## [1.0.0]
+### Added 
+
+- JUnit 5 features: timeout, more types of assertions, assumptions, and running tests in order
+- Option "inlinetest-only"
+- Integration tests of running tests in parallel with pytest-xdist
