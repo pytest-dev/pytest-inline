@@ -22,7 +22,7 @@ jobs:
     - name: Test with pytest
       run: |
         cd tests
-        pytest -p pytester
+        pytest .
     - name: Test parallel execution
       run: |
         cd tests/parallelization
