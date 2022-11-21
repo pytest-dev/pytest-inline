@@ -47,7 +47,7 @@ setup(
     ],
     entry_points={
         "pytest11": [
-            "inline = inline",
+            "inline = inline.conftest",
         ],
     },
     extras_require={
