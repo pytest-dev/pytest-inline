@@ -1,4 +1,4 @@
-from inline.conftest import InlinetestItem, MalformedException, TimeoutException
+from inline.plugin import InlinetestItem, MalformedException, TimeoutException
 from _pytest.pytester import Pytester
 import pytest
 
