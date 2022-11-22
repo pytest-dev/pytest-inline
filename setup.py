@@ -18,7 +18,7 @@ setup(
     version="1.0.0",
     author="Yu Liu",
     author_email="yuki.liu@utexas.edu",
-    maintainer="Yu Liu",
+    maintainer="Alan Han, Yu Liu, Pengyu Nie, Zachary William Thurston",
     maintainer_email="yuki.liu@utexas.edu",
     license="MIT",
     url="https://github.com/EngineeringSoftware/inlinetest",
