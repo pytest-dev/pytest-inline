@@ -421,7 +421,7 @@ class ExtractInlineTest(ast.NodeTransformer):
                     elif (
                         index == 5
                         and isinstance(arg, ast.Constant)
-                        and isinstance(arg.value, float)
+                        and (isinstance(arg.value, float) or isinstance(arg.value, int))
                     ):
                         self.cur_inline_test.timeout = arg.value
                     else:
@@ -481,7 +481,7 @@ class ExtractInlineTest(ast.NodeTransformer):
                     elif (
                         keyword.arg == self.arg_timeout_str
                         and isinstance(keyword.value, ast.Constant)
-                        and isinstance(keyword.value.value, float)
+                        and (isinstance(keyword.value.value, float) or isinstance(keyword.value.value, int))
                     ):
                         if keyword.value.value <= 0.0:
                             raise MalformedException(
@@ -543,7 +543,7 @@ class ExtractInlineTest(ast.NodeTransformer):
                     elif (
                         index == 5
                         and isinstance(arg, ast.Num)
-                        and isinstance(arg.n, float)
+                        and (isinstance(arg.n, float) or isinstance(arg.n, int))
                     ):
                         if arg.n <= 0.0:
                             raise MalformedException(
@@ -606,7 +606,7 @@ class ExtractInlineTest(ast.NodeTransformer):
                     elif (
                         keyword.arg == self.arg_timeout_str
                         and isinstance(keyword.value, ast.Num)
-                        and isinstance(keyword.value.n, float)
+                        and (isinstance(keyword.value.n, float) or isinstance(keyword.value.n, int))
                     ):
                         if keyword.value.n <= 0.0:
                             raise MalformedException(

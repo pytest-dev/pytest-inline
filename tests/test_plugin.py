@@ -435,7 +435,7 @@ class TestInlinetests:
         import time
         def m(a):
             a = a + 1
-            Here(timeout=10.75).given(a, loop(3)).check_eq(a,4.0)
+            Here(timeout=1).given(a, loop(3)).check_eq(a,4.0)
 
         def loop(b):
             while True:
@@ -443,9 +443,8 @@ class TestInlinetests:
     """
         )
         for x in (pytester.path, checkfile):
-            items, reprec = pytester.inline_genitems(x)
             res = pytester.runpytest()
-            res.ret == 0
+            res.ret == 1
             pytest.raises(TimeoutException)
 
     def test_check_order_tests(self, pytester: Pytester):
@@ -652,7 +651,7 @@ class TestInlinetests:
 
         def m(a):
             a = -3
-            Here(timeout=5.75).assume(True).given(a, loop(3)).check_eq(a,1)
+            Here(timeout=1).assume(True).given(a, loop(3)).check_eq(a,1)
 
         def loop(b):
             while True:
@@ -676,7 +675,7 @@ class TestInlinetests:
 
         def m(a):
             a = -3
-            Here(timeout=5.75).assume(False).given(a, loop(3)).check_eq(a,1)
+            Here(timeout=1).assume(False).given(a, loop(3)).check_eq(a,1)
 
         def loop(b):
             while True:
