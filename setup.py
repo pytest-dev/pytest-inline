@@ -22,7 +22,7 @@ setup(
     maintainer_email="yuki.liu@utexas.edu",
     license="MIT",
     url="https://github.com/EngineeringSoftware/inlinetest",
-    description="A simple plugin to use with pytest",
+    description="A pytest plugin for writing inline tests.",
     long_description=read("README.md"),
     packages=find_packages(where="src"),
     package_dir={"": "src"},
