@@ -12,17 +12,18 @@ pytest-inline is a plugin for [pytest](<http://pytest.org>) that writes inline t
 5. [Citation](#Citation)
 
 ## Example
+The regular expression (Line 5) in this code snippet checks if variable name matches a regex for a pattern that matches 
 
-```python {.line-numbers}
-def FileHeader(self):
-        dt = self.date_time
-        dosdate = (dt[0] - 1980) << 9 | dt[1] << 5 | dt[2]
-        Here().given(dt, (1980, 1, 25, 17, 13, 14)).check_eq(dosdate, 57)
-        dostime = dt[3] << 11 | dt[4] << 5 | (dt[5] // 2)
-        Here().given(dt, (1980, 1, 25, 17, 13, 14)).check_eq(dostime, 35239)
-        if self.flag_bits & 0x08:
-                # Set these to zero because we write them after the file data
-                CRC = compress_size = file_size = 0
+```python
+def get_assignment_map_from_checkpoint(tvars, init_c):
+    ...
+    for var in tvars:
+        name = var.name
+        m = re.match("^(.*):\\d+$", name)
+        Here().given(name, "a:0").check_eq(m, "a")
+        if m is not None:
+            name = m.group(1)
+    ...
 ```
 
 ## Install
