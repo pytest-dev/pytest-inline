@@ -50,3 +50,23 @@ Specify test oracles
         check if the actual value and the expected value refer to the same object.
 - check\_not\_same(actual\_value, expected\_value): 
         check if the actual value and the expected value refer to different objects.
+        
+
+Citation
+--------
+
+Title: `Inline Tests<https://arxiv.org/pdf/2209.06315.pdf>`_
+
+Authors: [Yu Liu](https://sweetstreet.github.io/), [Pengyu Nie](https://pengyunie.github.io/), [Owolabi Legunsen](https://mir.cs.illinois.edu/legunsen/), [Milos Gligoric](http://users.ece.utexas.edu/~gligoric/)
+
+If you have used I-Test in a research project, please cite the research paper in any related publication:
+
+```bibtex
+@inproceedings{LiuASE22InlineTests,
+  title =        {Inline Tests},
+  author =       {Yu Liu and Pengyu Nie and Owolabi Legunsen and Milos Gligoric},
+  pages =        {to appear},
+  booktitle =    {International Conference on Automated Software Engineering},
+  year =         {2022},
+}
+```
