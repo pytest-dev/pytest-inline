@@ -23,6 +23,7 @@ setup(
     license="MIT",
     url="https://github.com/EngineeringSoftware/inlinetest",
     description="A pytest plugin for writing inline tests.",
+    long_description_content_type="text/markdown",
     long_description=read("README.md"),
     packages=find_packages(where="src"),
     package_dir={"": "src"},
