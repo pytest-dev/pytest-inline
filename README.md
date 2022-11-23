@@ -137,4 +137,4 @@ If you have used I-Test in a research project, please cite the research paper in
 }
 ```
 
-[paper-url]: /README.md
+[paper-url]: https://arxiv.org/abs/2209.06315
