@@ -23,7 +23,7 @@ setup(
     license="MIT",
     url="https://github.com/EngineeringSoftware/inlinetest",
     description="A simple plugin to use with pytest",
-    long_description=read("README.rst"),
+    long_description=read("README.md"),
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     python_requires=">=3.7",
