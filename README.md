@@ -12,7 +12,11 @@ pytest-inline is a plugin for [pytest](<http://pytest.org>) that writes inline t
 5. [Citation](#Citation)
 
 ## Example
-The regular expression (Line 5) in this code snippet checks if variable name matches a regex for a pattern that matches 
+The regular expression (Line 5) in this code snippet checks if variable name matches a regex for a pattern that ends in a colon and has at least one digit
+The inline test (Line 6) that we write for target statement (Line 5) consists of three parts:
+- Declaration with Here() constructor
+- Assigning inputs with given() function calls
+- Specifying test oracles with check_*() function calls
 
 ```python
 def get_assignment_map_from_checkpoint(tvars, init_c):
