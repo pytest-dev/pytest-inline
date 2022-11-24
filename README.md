@@ -1,6 +1,6 @@
 # pytest-inline
 
-pytest-inline is a plugin for [pytest](<http://pytest.org>) that writes inline tests.
+pytest-inline is a [pytest](<http://pytest.org>) plugin for writing inline tests.
 
 Inline testing is a new granularity of testing that make it easier to check individual program statements. An inline test is a statement that allows to provide arbitrary inputs and test oracles for checking the immediately preceding statement that is not an inline test.
 
