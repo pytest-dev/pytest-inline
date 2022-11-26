@@ -139,16 +139,9 @@ def inlinetest_namespace() -> Dict[str, Any]:
 ## InlineTest
 ######################################################################
 class InlineTest:
-    # https://docs.python.org/3/tutorial/stdlib.html
-    import_libraries = [
-        "import re",
-        "import unittest",
-        "from unittest.mock import patch",
-    ]
-
     def __init__(self):
         self.assume_stmts = []
-        self.assume_node : ast.If = None
+        self.assume_node: ast.If = None
         self.check_stmts = []
         self.given_stmts = []
         self.previous_stmts = []
@@ -168,42 +161,49 @@ class InlineTest:
 
     def to_test(self):
         if self.prev_stmt_type == PrevStmtType.CondExpr:
-            if self.assume_stmts == []: 
+            if self.assume_stmts == []:
                 return "\n".join(
-                    self.import_libraries
-                    + [ExtractInlineTest.node_to_source_code(n) for n in self.given_stmts]
-                    + [ExtractInlineTest.node_to_source_code(n) for n in self.check_stmts]
+                    [ExtractInlineTest.node_to_source_code(n) for n in self.given_stmts]
+                    + [
+                        ExtractInlineTest.node_to_source_code(n)
+                        for n in self.check_stmts
+                    ]
                 )
             else:
-                body_nodes = [n for n in self.given_stmts] + [n for n in self.previous_stmts] + [n for n in self.check_stmts]
+                body_nodes = (
+                    [n for n in self.given_stmts]
+                    + [n for n in self.previous_stmts]
+                    + [n for n in self.check_stmts]
+                )
                 assume_statement = self.assume_stmts[0]
                 assume_node = self.build_assume_node(assume_statement, body_nodes)
-                return "\n".join(
-                    self.import_libraries
-                    + ExtractInlineTest.node_to_source_code(assume_node)
-                    
-                )
-                
+                return "\n".join(ExtractInlineTest.node_to_source_code(assume_node))
 
         else:
             if self.assume_stmts == []:
                 return "\n".join(
-                    self.import_libraries
-                    + [ExtractInlineTest.node_to_source_code(n) for n in self.given_stmts]
-                    + [ExtractInlineTest.node_to_source_code(n) for n in self.previous_stmts]
-                    + [ExtractInlineTest.node_to_source_code(n) for n in self.check_stmts]
+                    [ExtractInlineTest.node_to_source_code(n) for n in self.given_stmts]
+                    + [
+                        ExtractInlineTest.node_to_source_code(n)
+                        for n in self.previous_stmts
+                    ]
+                    + [
+                        ExtractInlineTest.node_to_source_code(n)
+                        for n in self.check_stmts
+                    ]
                 )
             else:
-                body_nodes = [n for n in self.given_stmts] + [n for n in self.previous_stmts] + [n for n in self.check_stmts]
+                body_nodes = (
+                    [n for n in self.given_stmts]
+                    + [n for n in self.previous_stmts]
+                    + [n for n in self.check_stmts]
+                )
                 assume_statement = self.assume_stmts[0]
                 assume_node = self.build_assume_node(assume_statement, body_nodes)
-                return "\n".join(
-                    self.import_libraries
-                    + [ExtractInlineTest.node_to_source_code(assume_node)]
-                )
-    
+                return "\n".join([ExtractInlineTest.node_to_source_code(assume_node)])
+
     def build_assume_node(self, assumption_node, body_nodes):
-        return ast.If(assumption_node, body_nodes,[])
+        return ast.If(assumption_node, body_nodes, [])
 
     def __repr__(self):
         if self.test_name:
@@ -216,8 +216,7 @@ class InlineTest:
 
     def __eq__(self, other):
         return (
-            self.import_libraries == other.import_libraries
-            and self.assume_stmts == other.assume_stmts
+            self.assume_stmts == other.assume_stmts
             and self.given_stmts == other.given_stmts
             and self.previous_stmts == other.previous_stmts
             and self.check_stmts == other.check_stmts
@@ -481,7 +480,10 @@ class ExtractInlineTest(ast.NodeTransformer):
                     elif (
                         keyword.arg == self.arg_timeout_str
                         and isinstance(keyword.value, ast.Constant)
-                        and (isinstance(keyword.value.value, float) or isinstance(keyword.value.value, int))
+                        and (
+                            isinstance(keyword.value.value, float)
+                            or isinstance(keyword.value.value, int)
+                        )
                     ):
                         if keyword.value.value <= 0.0:
                             raise MalformedException(
@@ -606,7 +608,10 @@ class ExtractInlineTest(ast.NodeTransformer):
                     elif (
                         keyword.arg == self.arg_timeout_str
                         and isinstance(keyword.value, ast.Num)
-                        and (isinstance(keyword.value.n, float) or isinstance(keyword.value.n, int))
+                        and (
+                            isinstance(keyword.value.n, float)
+                            or isinstance(keyword.value.n, int)
+                        )
                     ):
                         if keyword.value.n <= 0.0:
                             raise MalformedException(
@@ -1023,7 +1028,9 @@ class ExtractInlineTest(ast.NodeTransformer):
         if len(node.args) == 0:
             self.build_fail()
         else:
-            raise MalformedException("inline test: fail() does not expect any arguments")
+            raise MalformedException(
+                "inline test: fail() does not expect any arguments"
+            )
 
     def parse_group(self, node):
         if (
@@ -1090,15 +1097,12 @@ class ExtractInlineTest(ast.NodeTransformer):
 
         # "assume_true(...) or assume_false(...)
         inline_test_call_index = 1
-        if(len(inline_test_calls) >= 2):
+        if len(inline_test_calls) >= 2:
             call = inline_test_calls[1]
-            if (
-                isinstance(call.func, ast.Attribute)
-                and call.func.attr == self.assume
-            ):
+            if isinstance(call.func, ast.Attribute) and call.func.attr == self.assume:
                 self.parse_assume(call)
                 inline_test_call_index += 1
-        
+
         # "given(a, 1)"
         for call in inline_test_calls[inline_test_call_index:]:
             if (
@@ -1168,6 +1172,7 @@ class ExtractInlineTest(ast.NodeTransformer):
     def node_to_source_code(node):
         ast.fix_missing_locations(node)
         return ast_unparse(node)
+
 
 ######################################################################
 ## InlineTest Finder
