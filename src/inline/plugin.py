@@ -141,7 +141,6 @@ def inlinetest_namespace() -> Dict[str, Any]:
 class InlineTest:
     def __init__(self):
         self.assume_stmts = []
-        self.assume_node: ast.If = None
         self.check_stmts = []
         self.given_stmts = []
         self.previous_stmts = []
@@ -180,7 +179,7 @@ class InlineTest:
                 return "\n".join(ExtractInlineTest.node_to_source_code(assume_node))
 
         else:
-            if self.assume_stmts == []:
+            if self.assume_stmts is None or self.assume_stmts == []:
                 return "\n".join(
                     [ExtractInlineTest.node_to_source_code(n) for n in self.given_stmts]
                     + [
