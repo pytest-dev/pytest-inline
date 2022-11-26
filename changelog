@@ -4,6 +4,9 @@
 ### Fix
 - Fix: inlinetest-only skips collecting inline tests
 
+### Added
+- Add badges in README
+
 ## [1.0.1]
 ### Added
 - New README

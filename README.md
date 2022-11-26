@@ -1,9 +1,13 @@
 # pytest-inline
 
+![License](https://img.shields.io/github/license/EngineeringSoftware/pytest-inline)
+[![Pypi](https://img.shields.io/pypi/v/pytest-inline)](https://pypi.org/project/pytest-inline/)
+[![Release](https://img.shields.io/github/v/release/EngineeringSoftware/pytest-inline?include_prereleases)](https://github.com/EngineeringSoftware/pytest-inline/releases)
+[![GithubWorkflow](https://img.shields.io/github/workflow/status/EngineeringSoftware/pytest-inline/Python%20Package)](https://github.com/EngineeringSoftware/pytest-inline/actions/workflows/python-package.yml)
+
 pytest-inline is a [pytest](<http://pytest.org>) plugin for writing inline tests.
 
 Inline testing is a new granularity of testing that make it easier to check individual program statements. An inline test is a statement that allows to provide arbitrary inputs and test oracles for checking the immediately preceding statement that is not an inline test.
-
 
 ## Table of contents
 
