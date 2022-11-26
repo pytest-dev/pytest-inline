@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.2]
+### Fix
+- Fix: inlinetest-only skips collecting inline tests
+
 ## [1.0.1]
 ### Added
 - New README

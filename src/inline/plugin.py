@@ -1,17 +1,19 @@
 import ast
 import copy
+import enum
 import inspect
+import signal
 import sys
 import time
 from pathlib import Path
 from types import ModuleType
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
-import enum
+
 import pytest
-from _pytest.pathlib import fnmatch_ex, import_path
-from pytest import Collector, Config, FixtureRequest, Parser
-import signal
 from _pytest.main import Session
+from _pytest.pathlib import fnmatch_ex, import_path
+from _pytest.python import Package
+from pytest import Collector, Config, FixtureRequest, Parser
 
 if sys.version_info >= (3, 9, 0):
     from ast import unparse as ast_unparse
@@ -99,12 +101,12 @@ def pytest_configure(config):
 
 @pytest.hookimpl()
 def pytest_collectstart(collector):
-    if not isinstance(collector, Session):
+    if not isinstance(collector, (Session, Package)):
         if collector.config.getoption("inlinetest_only") and (
             not isinstance(collector, InlinetestModule)
         ):
             collector.collect = lambda: []  # type: ignore[assignment]
-        elif collector.config.getoption("inlinetest_disable") and isinstance(
+        if collector.config.getoption("inlinetest_disable") and isinstance(
             collector, InlinetestModule
         ):
             collector.collect = lambda: []  # type: ignore[assignment]
@@ -122,8 +124,6 @@ def pytest_collect_file(
 
 
 def _is_inlinetest(config: Config, file_path: Path) -> bool:
-    if config.getoption("inlinetest_disable"):
-        return False
     globs = config.getoption("inlinetest_glob") or ["*.py"]
     return any(fnmatch_ex(glob, file_path) for glob in globs)
 
@@ -1391,11 +1391,12 @@ class InlinetestModule(pytest.Module):
             try:
                 # TODO: still need to find the right way to import without errors. mode=ImportMode.importlib did not work
                 module = import_path(self.path, root=self.config.rootpath)
-            except ImportError:
+            except (ImportError or ModuleNotFoundError) as e:
                 if self.config.getvalue("inlinetest_ignore_import_errors"):
                     pytest.skip("unable to import module %r" % self.path)
                 else:
                     raise ImportError("unable to import module %r" % self.path)
+
         finder = InlineTestFinder()
         runner = InlineTestRunner()
 
