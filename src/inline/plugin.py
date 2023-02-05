@@ -276,7 +276,8 @@ class InlinetestParser:
 
 
 class ExtractInlineTest(ast.NodeTransformer):
-    class_name_str = "Here"
+    package_name_str = "inline"
+    class_name_str = "itest"
     check_eq_str = "check_eq"
     check_true_str = "check_true"
     check_false_str = "check_false"
@@ -315,7 +316,7 @@ class ExtractInlineTest(ast.NodeTransformer):
             return False
 
     def visit_ImportFrom(self, node):
-        if node.module == "inline" and node.names[0].name == "Here":
+        if node.module == self.package_name_str and node.names[0].name == self.class_name_str:
             self.inline_module_imported = True
         return self.generic_visit(node)
 
@@ -329,7 +330,7 @@ class ExtractInlineTest(ast.NodeTransformer):
             raise NotImplementedError("inline test: failed to find a tested statement")
 
     def find_previous_stmt(self, node):
-        # get the previous stmt that is not Here() by finding the previous sibling
+        # get the previous stmt that is not itest() by finding the previous sibling
         stmt_node = node
         while not isinstance(stmt_node, ast.Expr):
             stmt_node = stmt_node.parent
@@ -424,7 +425,7 @@ class ExtractInlineTest(ast.NodeTransformer):
                         self.cur_inline_test.timeout = arg.value
                     else:
                         raise MalformedException(
-                            f"inline test: Here() accepts {NUM_OF_ARGUMENTS} arguments. 'test_name' must be a string constant, 'parameterized' must be a boolean constant, 'repeated' must be a positive integer, 'tag' must be a list of string, 'timeout' must be a positive float"
+                            f"inline test: {self.class_name_str}() accepts {NUM_OF_ARGUMENTS} arguments. 'test_name' must be a string constant, 'parameterized' must be a boolean constant, 'repeated' must be a positive integer, 'tag' must be a list of string, 'timeout' must be a positive float"
                         )
                 # keyword arguments
                 for keyword in node.keywords:
@@ -491,7 +492,7 @@ class ExtractInlineTest(ast.NodeTransformer):
                         self.cur_inline_test.timeout = keyword.value.value
                     else:
                         raise MalformedException(
-                            f"inline test: Here() accepts {NUM_OF_ARGUMENTS} arguments. 'test_name' must be a string constant, 'parameterized' must be a boolean constant, 'repeated' must be a positive integer, 'tag' must be a list of string, 'timeout' must be a positive float"
+                            f"inline test: {self.class_name_str}() accepts {NUM_OF_ARGUMENTS} arguments. 'test_name' must be a string constant, 'parameterized' must be a boolean constant, 'repeated' must be a positive integer, 'tag' must be a list of string, 'timeout' must be a positive float"
                         )
             else:
                 for index, arg in enumerate(node.args):
@@ -553,7 +554,7 @@ class ExtractInlineTest(ast.NodeTransformer):
                         self.cur_inline_test.timeout = arg.n
                     else:
                         raise MalformedException(
-                            f"inline test: Here() accepts {NUM_OF_ARGUMENTS} arguments. 'test_name' must be a string constant, 'parameterized' must be a boolean constant, 'repeated' must be a positive intege, 'tag' must be a list of string, 'timeout' must be a positive float"
+                            f"inline test: {self.class_name_str}() accepts {NUM_OF_ARGUMENTS} arguments. 'test_name' must be a string constant, 'parameterized' must be a boolean constant, 'repeated' must be a positive intege, 'tag' must be a list of string, 'timeout' must be a positive float"
                         )
                 # keyword arguments
                 for keyword in node.keywords:
@@ -619,11 +620,11 @@ class ExtractInlineTest(ast.NodeTransformer):
                         self.cur_inline_test.timeout = keyword.value.n
                     else:
                         raise MalformedException(
-                            f"inline test: Here() accepts {NUM_OF_ARGUMENTS} arguments. 'test_name' must be a string constant, 'parameterized' must be a boolean constant, 'repeated' must be a positive integer, 'tag' must be a list of string, 'timeout' must be a positive float"
+                            f"inline test: {self.class_name_str}() accepts {NUM_OF_ARGUMENTS} arguments. 'test_name' must be a string constant, 'parameterized' must be a boolean constant, 'repeated' must be a positive integer, 'tag' must be a list of string, 'timeout' must be a positive float"
                         )
         else:
             raise MalformedException(
-                "inline test: invalid Here(), expected at most 3 args"
+                f"inline test: invalid {self.class_name_str}(), expected at most 3 args"
             )
 
         if not self.cur_inline_test.test_name:
@@ -1084,7 +1085,7 @@ class ExtractInlineTest(ast.NodeTransformer):
                 "inline test: invalid inline test, requires at least one assertion"
             )
 
-        # "Here()" or "Here('test name')" or "Here('test name', True)" or "Here(parameterized=True)" or "Here(test_name='test name', parameterized=True)"
+        # "itest()" or "itest('test name')" or "itest('test name', True)" or "itest(parameterized=True)" or "itest(test_name='test name', parameterized=True)"
         constructor_call = inline_test_calls[0]
         if (
             isinstance(constructor_call.func, ast.Name)

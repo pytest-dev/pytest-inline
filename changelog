@@ -1,4 +1,7 @@
 # Changelog
+## [1.0.3]
+### Changed
+- Change: Use `itest` instead of `Here` for inline test constructor
 
 ## [1.0.2]
 ### Fix
