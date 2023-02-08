@@ -21,7 +21,7 @@ setup(
     maintainer="Alan Han, Yu Liu, Pengyu Nie, Zachary William Thurston",
     maintainer_email="yuki.liu@utexas.edu",
     license="MIT",
-    url="https://github.com/EngineeringSoftware/inlinetest",
+    url="https://github.com/pytest-dev/pytest-inline",
     description="A pytest plugin for writing inline tests.",
     long_description_content_type="text/markdown",
     long_description=read("README.md"),
