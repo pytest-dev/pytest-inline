@@ -157,14 +157,14 @@ Authors: [Yu Liu](https://sweetstreet.github.io/), [Pengyu Nie](https://pengyuni
 
 Title: [pytest-inline](https://pengyunie.github.io/p/LiuETAL23pytest-inline.pdf)
 
-Authors: [Yu Liu](https://sweetstreet.github.io/), [Zachary Thurston](), [Alan Han](), [Pengyu Nie](https://pengyunie.github.io/), [Owolabi Legunsen](https://mir.cs.illinois.edu/legunsen/), [Milos Gligoric](http://users.ece.utexas.edu/~gligoric/)
+Authors: [Yu Liu](https://sweetstreet.github.io/), [Zachary Thurston](), [Alan Han](), [Pengyu Nie](https://pengyunie.github.io/), [Milos Gligoric](http://users.ece.utexas.edu/~gligoric/), [Owolabi Legunsen](https://mir.cs.illinois.edu/legunsen/)
 
 ```bibtex
 @inproceedings{LiuICSE23PytestInline,
   title =        {pytest-inline: An Inline Testing Tool for Python},
-  author =       {Yu Liu and Zachary Thurston and Alan Han and Pengyu Nie and Owolabi Legunsen and Milos Gligoric},
+  author =       {Yu Liu and Zachary Thurston and Alan Han and Pengyu Nie and Milos Gligoric and Owolabi Legunsen},
   pages =        {To appear},
-  booktitle =    {International Conference on Software Engineering},
+  booktitle =    {International Conference on Software Engineering, DEMO},
   year =         {2023},
 }
 ```
