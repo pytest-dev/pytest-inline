@@ -155,7 +155,7 @@ Authors: [Yu Liu](https://sweetstreet.github.io/), [Pengyu Nie](https://pengyuni
 }
 ```
 
-Title: [pytest-inline][paper-url]
+Title: [pytest-inline](https://pengyunie.github.io/p/LiuETAL23pytest-inline.pdf)
 
 Authors: [Yu Liu](https://sweetstreet.github.io/), [Zachary Thurston](), [Alan Han](), [Pengyu Nie](https://pengyunie.github.io/), [Owolabi Legunsen](https://mir.cs.illinois.edu/legunsen/), [Milos Gligoric](http://users.ece.utexas.edu/~gligoric/)
 
