@@ -1,3 +1,9 @@
+# Temp files
+*~
+\#*\#
+.DS_Store
+
+
 build/
 *.egg-info
 dist/
