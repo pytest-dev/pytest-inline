@@ -168,13 +168,3 @@ Authors: [Yu Liu](https://sweetstreet.github.io/), [Zachary Thurston](), [Alan H
   year =         {2023},
 }
 ```
-
-```bibtex
-@inproceedings{LiuASE22InlineTests,
-  title =        {Inline Tests},
-  author =       {Yu Liu and Pengyu Nie and Owolabi Legunsen and Milos Gligoric},
-  pages =        {1--13},
-  booktitle =    {International Conference on Automated Software Engineering},
-  year =         {2022},
-}
-```
