@@ -77,9 +77,9 @@ Use ``pytest {filename}`` to run all inline tests in a Python file.
 
     ```python {.line-numbers}
     def FileHeader(self):
-            dt = self.date_time
-            dosdate = (dt[0] - 1980) << 9 | dt[1] << 5 | dt[2]
-            itest().assume(2 < 4).given(dt, (1980, 1, 25, 17, 13, 14)).check_eq(dosdate, 57)
+        dt = self.date_time
+        dosdate = (dt[0] - 1980) << 9 | dt[1] << 5 | dt[2]
+        itest().assume(2 < 4).given(dt, (1980, 1, 25, 17, 13, 14)).check_eq(dosdate, 57)
     ```
 
 
