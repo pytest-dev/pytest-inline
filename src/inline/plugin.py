@@ -1395,7 +1395,8 @@ class InlinetestModule(pytest.Module):
             try:
                 # TODO: still need to find the right way to import without errors. mode=ImportMode.importlib did not work
                 module = import_path(self.path, root=self.config.rootpath)
-            except (ImportError, ModuleNotFoundError) as e:
+            except Exception as e:
+                # (ImportError, ModuleNotFoundError, TypeError, NameError, FileNotFoundError)
                 if self.config.getvalue("inlinetest_ignore_import_errors"):
                     pytest.skip("unable to import module %r" % self.path)
                 else:
