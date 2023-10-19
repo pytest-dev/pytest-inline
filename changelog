@@ -1,8 +1,10 @@
 # Changelog
-## [1.0.4]
-- Change: Update README
+## [1.0.5]
 - Change: Remove unused code
 - Change: Capture a general Exception (not limited to ImportError and ModuleNotFoundError) when attempting to import modules during collection phase
+
+## [1.0.4]
+- Change: Update README
 
 ## [1.0.3]
 ### Changed
