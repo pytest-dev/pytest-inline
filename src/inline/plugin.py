@@ -26,15 +26,14 @@ else:
 
 # register argparse-style options and ini-file values, called once at the beginning of a test run
 def pytest_addoption(parser: Parser) -> None:
-    group = parser.getgroup("collect")
-    group.addoption(
+    parser.addoption(
         "--inlinetest-only",
         action="store_true",
         default=False,
         help="run inlinetests in all .py modules",
         dest="inlinetest_only",
     )
-    group.addoption(
+    parser.addoption(
         "--inlinetest-glob",
         action="append",
         default=[],
@@ -42,28 +41,28 @@ def pytest_addoption(parser: Parser) -> None:
         help="inlinetests file matching pattern, default: *.py",
         dest="inlinetest_glob",
     )
-    group.addoption(
+    parser.addoption(
         "--inlinetest-continue-on-failure",
         action="store_true",
         default=False,
         help="for a given inlinetest, continue to run after the first failure",
         dest="inlinetest_continue_on_failure",
     )
-    group.addoption(
+    parser.addoption(
         "--inlinetest-ignore-import-errors",
         action="store_true",
         default=False,
         help="ignore inlinetest ImportErrors",
         dest="inlinetest_ignore_import_errors",
     )
-    group.addoption(
+    parser.addoption(
         "--inlinetest-disable",
         action="store_true",
         default=False,
         help="disable inlinetests",
         dest="inlinetest_disable",
     )
-    group.addoption(
+    parser.addoption(
         "--inlinetest-group",
         action="append",
         default=[],
@@ -71,7 +70,7 @@ def pytest_addoption(parser: Parser) -> None:
         help="group inlinetests",
         dest="inlinetest_group",
     )
-    group.addoption(
+    parser.addoption(
         "--inlinetest-order",
         action="append",
         default=[],
@@ -1400,7 +1399,7 @@ class InlinetestModule(pytest.Module):
                 if self.config.getvalue("inlinetest_ignore_import_errors"):
                     pytest.skip("unable to import module %r" % self.path)
                 else:
-                    raise ImportError("unable to import module %r" % self.path)
+                    raise
 
         finder = InlineTestFinder()
         runner = InlineTestRunner()
