@@ -7,7 +7,7 @@
 
 pytest-inline is a [pytest](<http://pytest.org>) plugin for writing inline tests.
 
-Inline testing is a new granularity of testing that make it easier to check individual program statements. An inline test is a statement that allows to provide arbitrary inputs and test oracles for checking the immediately preceding statement that is not an inline test.  Unlike unit tests that are usually placed in separate `test_*.py` files, inline tests are written together with the actual production code (and thus are easier to maintain). 
+Inline testing is a new granularity of testing that makes it easier to check individual program statements. An inline test is a statement that allows developers to provide arbitrary inputs and test oracles for checking the immediately preceding statement that is not an inline test.  Unlike unit tests that are usually placed in separate `test_*.py` files, inline tests are written together with the actual production code (and thus are easier to maintain). 
 
 ## Table of contents
 
@@ -19,13 +19,15 @@ Inline testing is a new granularity of testing that make it easier to check indi
 6. [Citation](#Citation)
 
 ## Example
-The regular expression (Line 5) in this code snippet checks if variable name matches a regex for a pattern that ends in a colon and has at least one digit
-The inline test (Line 6) that we write for target statement (Line 5) consists of three parts:
+The regular expression (Line 7) in this code snippet checks if variable name matches a regex for a pattern that ends in a colon and has at least one digit
+The inline test (Line 8) that we write for target statement (Line 7) consists of three parts:
 - Declaration with itest() constructor
 - Assigning inputs with given() function calls
 - Specifying test oracles with check_*() function calls
 
 ```python
+from inline import itest
+
 def get_assignment_map_from_checkpoint(tvars, init_c):
     ...
     for var in tvars:
@@ -75,9 +77,9 @@ Use ``pytest {filename}`` to run all inline tests in a Python file.
 
     ```python {.line-numbers}
     def FileHeader(self):
-            dt = self.date_time
-            dosdate = (dt[0] - 1980) << 9 | dt[1] << 5 | dt[2]
-            itest().assume(2 < 4).given(dt, (1980, 1, 25, 17, 13, 14)).check_eq(dosdate, 57)
+        dt = self.date_time
+        dosdate = (dt[0] - 1980) << 9 | dt[1] << 5 | dt[2]
+        itest().assume(2 < 4).given(dt, (1980, 1, 25, 17, 13, 14)).check_eq(dosdate, 57)
     ```
 
 
@@ -87,7 +89,7 @@ Use ``pytest {filename}`` to run all inline tests in a Python file.
 - given(variable, value): 
         Assign the value to the variable. 
 
-    Note that any number of given statements can be added. Below is a small example of this functionality. Additionally, the first given call must proceed either an itest() declaration or a assume() call if it is added.
+    Note that any number of given statements can be added. Below is a small example of this functionality. Additionally, the first given call must proceed either an itest() declaration or an assume() call if it is added.
 
     ```python {.line-numbers}
     def multiple_givens(a, c):
