@@ -1,3 +1,86 @@
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "inline"
+dynamic = ["version"]
+description = "A pytest plugin for writing inline tests"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" }
+authors = [{ name = "Yu Liu", email = "im.yukiliu@gmail.com" }]
+maintainers = [
+    { name = "Yu Liu", email = "im.yukiliu@gmail.com" },
+    { name = "Pengyu Nie", email = "prodigy.sov@gmail.com" },
+    { name = "Zachary William Thurston", email = "zwt3@cornell.edu" },
+    { name = "Alan Han", email = "ayh9@cornell.edu" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: Pytest",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Testing",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: MIT License",
+]
+dependencies = ["pytest~=7.0"]
+
+[project.optional-dependencies]
+dev = ["hatch", "coverage[toml]", "black", "ruff", "tox"]
+
+[project.urls]
+Issues = "https://github.com/pytest-dev/pytest-inline/issues"
+Source = "https://github.com/pytest-dev/pytest-inline"
+
+[project.entry-points.pytest11]
+inline = "inline.plugin"
+
+[tool.hatch.version]
+path = "src/inline/__about__.py"
+
+# testing (pytest)
+[tool.pytest.ini_options]
+addopts = "-p pytester"
+testpaths = ["tests"]
+
+# code coverage (coverage)
+[tool.coverage.run]
+source_pkgs = ["inline", "tests"]
+branch = true
+parallel = true
+omit = ["src/inline/__about__.py"]
+
+[tool.coverage.paths]
+inline = ["src/inline", "*/inline/src/inline"]
+tests = ["tests", "*/inline/tests"]
+
+[tool.coverage.report]
+exclude_lines = ["no cov", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
+
+# formatting (black)
+[tool.black]
+target-version = ["py38"]
+line-length = 120
+
+# linting (ruff)
+[tool.ruff]
+target-version = "py38"
+line-length = 120
+select = [
+    "E", # pycodestyle error
+    "F", # pyflakes
+    "I", # isort
+]
+
+[tool.ruff.isort]
+known-first-party = ["inline"]
