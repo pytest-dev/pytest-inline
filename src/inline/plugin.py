@@ -24,6 +24,7 @@ else:
 # Alternatively, invoke pytest with -p inline)
 # pytest_plugins = ["inline"]
 
+
 # register argparse-style options and ini-file values, called once at the beginning of a test run
 def pytest_addoption(parser: Parser) -> None:
     parser.addoption(
@@ -82,9 +83,7 @@ def pytest_addoption(parser: Parser) -> None:
 
 @pytest.hookimpl()
 def pytest_exception_interact(node, call, report):
-    if isinstance(call.excinfo.value, MalformedException) or isinstance(
-        call.excinfo.value, AssertionError
-    ):
+    if isinstance(call.excinfo.value, MalformedException) or isinstance(call.excinfo.value, AssertionError):
         # fail to parse inline test
         # fail to execute inline test
         entry = report.longrepr.reprtraceback.reprentries[-1]
@@ -101,13 +100,9 @@ def pytest_configure(config):
 @pytest.hookimpl()
 def pytest_collectstart(collector):
     if not isinstance(collector, (Session, Package)):
-        if collector.config.getoption("inlinetest_only") and (
-            not isinstance(collector, InlinetestModule)
-        ):
+        if collector.config.getoption("inlinetest_only") and (not isinstance(collector, InlinetestModule)):
             collector.collect = lambda: []  # type: ignore[assignment]
-        if collector.config.getoption("inlinetest_disable") and isinstance(
-            collector, InlinetestModule
-        ):
+        if collector.config.getoption("inlinetest_disable") and isinstance(collector, InlinetestModule):
             collector.collect = lambda: []  # type: ignore[assignment]
 
 
@@ -162,16 +157,11 @@ class InlineTest:
             if self.assume_stmts == []:
                 return "\n".join(
                     [ExtractInlineTest.node_to_source_code(n) for n in self.given_stmts]
-                    + [
-                        ExtractInlineTest.node_to_source_code(n)
-                        for n in self.check_stmts
-                    ]
+                    + [ExtractInlineTest.node_to_source_code(n) for n in self.check_stmts]
                 )
             else:
                 body_nodes = (
-                    [n for n in self.given_stmts]
-                    + [n for n in self.previous_stmts]
-                    + [n for n in self.check_stmts]
+                    [n for n in self.given_stmts] + [n for n in self.previous_stmts] + [n for n in self.check_stmts]
                 )
                 assume_statement = self.assume_stmts[0]
                 assume_node = self.build_assume_node(assume_statement, body_nodes)
@@ -181,20 +171,12 @@ class InlineTest:
             if self.assume_stmts is None or self.assume_stmts == []:
                 return "\n".join(
                     [ExtractInlineTest.node_to_source_code(n) for n in self.given_stmts]
-                    + [
-                        ExtractInlineTest.node_to_source_code(n)
-                        for n in self.previous_stmts
-                    ]
-                    + [
-                        ExtractInlineTest.node_to_source_code(n)
-                        for n in self.check_stmts
-                    ]
+                    + [ExtractInlineTest.node_to_source_code(n) for n in self.previous_stmts]
+                    + [ExtractInlineTest.node_to_source_code(n) for n in self.check_stmts]
                 )
             else:
                 body_nodes = (
-                    [n for n in self.given_stmts]
-                    + [n for n in self.previous_stmts]
-                    + [n for n in self.check_stmts]
+                    [n for n in self.given_stmts] + [n for n in self.previous_stmts] + [n for n in self.check_stmts]
                 )
                 assume_statement = self.assume_stmts[0]
                 assume_node = self.build_assume_node(assume_statement, body_nodes)
@@ -260,11 +242,7 @@ class InlinetestParser:
             for child in ast.iter_child_nodes(node):
                 child.parent = node
                 if isinstance(child, ast.stmt):
-                    node.children = (
-                        [child]
-                        if not hasattr(node, "children")
-                        else [child] + node.children
-                    )
+                    node.children = [child] if not hasattr(node, "children") else [child] + node.children
 
         extract_inline_test = ExtractInlineTest()
         extract_inline_test.visit(tree)
@@ -320,9 +298,7 @@ class ExtractInlineTest(ast.NodeTransformer):
         return self.generic_visit(node)
 
     def find_condition_stmt(self, stmt_node):
-        if isinstance(stmt_node.parent, ast.If) or isinstance(
-            stmt_node.parent, ast.While
-        ):
+        if isinstance(stmt_node.parent, ast.If) or isinstance(stmt_node.parent, ast.While):
             self.cur_inline_test.prev_stmt_type = PrevStmtType.CondExpr
             return stmt_node.parent.test
         else:
@@ -345,9 +321,7 @@ class ExtractInlineTest(ast.NodeTransformer):
         else:
             for i in range(1, len(stmt_node.parent.children) - index_stmt_node):
                 prev_stmt_node = stmt_node.parent.children[index_stmt_node + i]
-                if isinstance(
-                    prev_stmt_node.value, ast.Call
-                ) and self.is_inline_test_class(prev_stmt_node.value):
+                if isinstance(prev_stmt_node.value, ast.Call) and self.is_inline_test_class(prev_stmt_node.value):
                     continue
                 else:
                     return prev_stmt_node
@@ -373,48 +347,25 @@ class ExtractInlineTest(ast.NodeTransformer):
             if sys.version_info >= (3, 8, 0):
                 for index, arg in enumerate(node.args):
                     # check if "test_name" is a string
-                    if (
-                        index == 0
-                        and isinstance(arg, ast.Constant)
-                        and isinstance(arg.value, str)
-                    ):
+                    if index == 0 and isinstance(arg, ast.Constant) and isinstance(arg.value, str):
                         # get the test name if exists
                         self.cur_inline_test.test_name = arg.value
                     # check if "parameterized" is a boolean
-                    elif (
-                        index == 1
-                        and isinstance(arg, ast.Constant)
-                        and isinstance(arg.value, bool)
-                    ):
+                    elif index == 1 and isinstance(arg, ast.Constant) and isinstance(arg.value, bool):
                         self.cur_inline_test.parameterized = arg.value
                     # check if "repeated" is a positive integer
-                    elif (
-                        index == 2
-                        and isinstance(arg, ast.Constant)
-                        and isinstance(arg.value, int)
-                    ):
+                    elif index == 2 and isinstance(arg, ast.Constant) and isinstance(arg.value, int):
                         if arg.value <= 0:
-                            raise MalformedException(
-                                f"inline test: {self.arg_repeated_str} must be greater than 0"
-                            )
+                            raise MalformedException(f"inline test: {self.arg_repeated_str} must be greater than 0")
                         self.cur_inline_test.repeated = arg.value
                     elif index == 3 and isinstance(arg.value, ast.List):
                         tags = []
                         for elt in arg.value.elts:
-                            if not (
-                                isinstance(elt, ast.Constant)
-                                and isinstance(elt.value, str)
-                            ):
-                                raise MalformedException(
-                                    f"tag can only be List of string"
-                                )
+                            if not (isinstance(elt, ast.Constant) and isinstance(elt.value, str)):
+                                raise MalformedException(f"tag can only be List of string")
                             tags.append(elt.value)
                         self.cur_inline_test.tag = tags
-                    elif (
-                        index == 4
-                        and isinstance(arg, ast.Constant)
-                        and isinstance(arg.value, bool)
-                    ):
+                    elif index == 4 and isinstance(arg, ast.Constant) and isinstance(arg.value, bool):
                         self.cur_inline_test.disabled = arg.value
                     elif (
                         index == 5
@@ -449,23 +400,14 @@ class ExtractInlineTest(ast.NodeTransformer):
                         and isinstance(keyword.value.value, int)
                     ):
                         if keyword.value.value <= 0:
-                            raise MalformedException(
-                                f"inline test: {self.arg_repeated_str} must be greater than 0"
-                            )
+                            raise MalformedException(f"inline test: {self.arg_repeated_str} must be greater than 0")
                         self.cur_inline_test.repeated = keyword.value.value
                     # check if "tag" is a list of string
-                    elif keyword.arg == self.arg_tag_str and isinstance(
-                        keyword.value, ast.List
-                    ):
+                    elif keyword.arg == self.arg_tag_str and isinstance(keyword.value, ast.List):
                         tags = []
                         for elt in keyword.value.elts:
-                            if not (
-                                isinstance(elt, ast.Constant)
-                                and isinstance(elt.value, str)
-                            ):
-                                raise MalformedException(
-                                    f"tag can only be List of string"
-                                )
+                            if not (isinstance(elt, ast.Constant) and isinstance(elt.value, str)):
+                                raise MalformedException(f"tag can only be List of string")
                             tags.append(elt.value)
                         self.cur_inline_test.tag = tags
                     # check if "disabled" is a boolean
@@ -479,15 +421,10 @@ class ExtractInlineTest(ast.NodeTransformer):
                     elif (
                         keyword.arg == self.arg_timeout_str
                         and isinstance(keyword.value, ast.Constant)
-                        and (
-                            isinstance(keyword.value.value, float)
-                            or isinstance(keyword.value.value, int)
-                        )
+                        and (isinstance(keyword.value.value, float) or isinstance(keyword.value.value, int))
                     ):
                         if keyword.value.value <= 0.0:
-                            raise MalformedException(
-                                f"inline test: {self.arg_timeout_str} must be greater than 0"
-                            )
+                            raise MalformedException(f"inline test: {self.arg_timeout_str} must be greater than 0")
                         self.cur_inline_test.timeout = keyword.value.value
                     else:
                         raise MalformedException(
@@ -496,60 +433,34 @@ class ExtractInlineTest(ast.NodeTransformer):
             else:
                 for index, arg in enumerate(node.args):
                     # check if "test_name" is a string
-                    if (
-                        index == 0
-                        and isinstance(arg, ast.Str)
-                        and isinstance(arg.s, str)
-                    ):
+                    if index == 0 and isinstance(arg, ast.Str) and isinstance(arg.s, str):
                         # get the test name if exists
                         self.cur_inline_test.test_name = arg.s
                     # check if "parameterized" is a boolean
-                    elif (
-                        index == 1
-                        and isinstance(arg, ast.NameConstant)
-                        and isinstance(arg.value, bool)
-                    ):
+                    elif index == 1 and isinstance(arg, ast.NameConstant) and isinstance(arg.value, bool):
                         self.cur_inline_test.parameterized = arg.value
                     # check if "repeated" is a positive integer
-                    elif (
-                        index == 2
-                        and isinstance(arg, ast.Num)
-                        and isinstance(arg.n, int)
-                    ):
+                    elif index == 2 and isinstance(arg, ast.Num) and isinstance(arg.n, int):
                         if arg.n <= 0.0:
-                            raise MalformedException(
-                                f"inline test: {self.arg_repeated_str} must be greater than 0"
-                            )
+                            raise MalformedException(f"inline test: {self.arg_repeated_str} must be greater than 0")
                         self.cur_inline_test.repeated = arg.n
                     # check if "tag" is a list of string
                     elif index == 3 and isinstance(arg.value, ast.List):
                         tags = []
                         for elt in arg.value.elts:
-                            if not (
-                                isinstance(elt, ast.Str) and isinstance(elt.s, str)
-                            ):
-                                raise MalformedException(
-                                    f"tag can only be List of string"
-                                )
+                            if not (isinstance(elt, ast.Str) and isinstance(elt.s, str)):
+                                raise MalformedException(f"tag can only be List of string")
                             tags.append(elt.s)
                         self.cur_inline_test.tag = tags
                     # check if "disabled" is a boolean
-                    elif (
-                        index == 4
-                        and isinstance(arg, ast.NameConstant)
-                        and isinstance(arg.value, bool)
-                    ):
+                    elif index == 4 and isinstance(arg, ast.NameConstant) and isinstance(arg.value, bool):
                         self.cur_inline_test.disabled = arg.value
                     # check if "timeout" is a positive int
                     elif (
-                        index == 5
-                        and isinstance(arg, ast.Num)
-                        and (isinstance(arg.n, float) or isinstance(arg.n, int))
+                        index == 5 and isinstance(arg, ast.Num) and (isinstance(arg.n, float) or isinstance(arg.n, int))
                     ):
                         if arg.n <= 0.0:
-                            raise MalformedException(
-                                f"inline test: {self.arg_timeout_str} must be greater than 0"
-                            )
+                            raise MalformedException(f"inline test: {self.arg_timeout_str} must be greater than 0")
                         self.cur_inline_test.timeout = arg.n
                     else:
                         raise MalformedException(
@@ -578,22 +489,14 @@ class ExtractInlineTest(ast.NodeTransformer):
                         and isinstance(keyword.value.n, int)
                     ):
                         if keyword.value.n <= 0.0:
-                            raise MalformedException(
-                                f"inline test: {self.arg_repeated_str} must be greater than 0"
-                            )
+                            raise MalformedException(f"inline test: {self.arg_repeated_str} must be greater than 0")
                         self.cur_inline_test.repeated = keyword.value.n
                     # check if "tag" is a list of string
-                    elif keyword.arg == self.arg_tag_str and isinstance(
-                        keyword.value, ast.List
-                    ):
+                    elif keyword.arg == self.arg_tag_str and isinstance(keyword.value, ast.List):
                         tags = []
                         for elt in keyword.value.elts:
-                            if not (
-                                isinstance(elt, ast.Str) and isinstance(elt.s, str)
-                            ):
-                                raise MalformedException(
-                                    f"tag can only be List of string"
-                                )
+                            if not (isinstance(elt, ast.Str) and isinstance(elt.s, str)):
+                                raise MalformedException(f"tag can only be List of string")
                             tags.append(elt.s)
                         self.cur_inline_test.tag = tags
                     # check if "disabled" is a boolean
@@ -607,24 +510,17 @@ class ExtractInlineTest(ast.NodeTransformer):
                     elif (
                         keyword.arg == self.arg_timeout_str
                         and isinstance(keyword.value, ast.Num)
-                        and (
-                            isinstance(keyword.value.n, float)
-                            or isinstance(keyword.value.n, int)
-                        )
+                        and (isinstance(keyword.value.n, float) or isinstance(keyword.value.n, int))
                     ):
                         if keyword.value.n <= 0.0:
-                            raise MalformedException(
-                                f"inline test: {self.arg_timeout_str} must be greater than 0"
-                            )
+                            raise MalformedException(f"inline test: {self.arg_timeout_str} must be greater than 0")
                         self.cur_inline_test.timeout = keyword.value.n
                     else:
                         raise MalformedException(
                             f"inline test: {self.class_name_str}() accepts {NUM_OF_ARGUMENTS} arguments. 'test_name' must be a string constant, 'parameterized' must be a boolean constant, 'repeated' must be a positive integer, 'tag' must be a list of string, 'timeout' must be a positive float"
                         )
         else:
-            raise MalformedException(
-                f"inline test: invalid {self.class_name_str}(), expected at most 3 args"
-            )
+            raise MalformedException(f"inline test: invalid {self.class_name_str}(), expected at most 3 args")
 
         if not self.cur_inline_test.test_name:
             # by default, use lineno as test name
@@ -634,13 +530,9 @@ class ExtractInlineTest(ast.NodeTransformer):
 
     def parameterized_inline_tests_init(self, node: ast.List):
         if not self.cur_inline_test.parameterized_inline_tests:
-            self.cur_inline_test.parameterized_inline_tests = [
-                InlineTest() for _ in range(len(node.elts))
-            ]
+            self.cur_inline_test.parameterized_inline_tests = [InlineTest() for _ in range(len(node.elts))]
         if len(node.elts) != len(self.cur_inline_test.parameterized_inline_tests):
-            raise MalformedException(
-                "inline test: parameterized tests must have the same number of test cases"
-            )
+            raise MalformedException("inline test: parameterized tests must have the same number of test cases")
 
     def parse_given(self, node):
         if len(node.args) == 2:
@@ -648,9 +540,7 @@ class ExtractInlineTest(ast.NodeTransformer):
                 self.parameterized_inline_tests_init(node.args[1])
                 for index, value in enumerate(node.args[1].elts):
                     assign_node = ast.Assign(targets=[node.args[0]], value=value)
-                    self.cur_inline_test.parameterized_inline_tests[
-                        index
-                    ].given_stmts.append(assign_node)
+                    self.cur_inline_test.parameterized_inline_tests[index].given_stmts.append(assign_node)
             else:
                 assign_node = ast.Assign(targets=[node.args[0]], value=node.args[1])
                 self.cur_inline_test.given_stmts.append(assign_node)
@@ -664,16 +554,12 @@ class ExtractInlineTest(ast.NodeTransformer):
                 for index, value in enumerate(node.args[0].elts):
                     test_node = self.parse_group(value)
                     assumption_node = self.build_assume(test_node)
-                    self.cur_inline_test.parameterized_inline_tests[
-                        index
-                    ].assume_stmts.append(assumption_node)
+                    self.cur_inline_test.parameterized_inline_tests[index].assume_stmts.append(assumption_node)
             else:
                 test_node = self.parse_group(node.args[0])
                 self.cur_inline_test.assume_stmts.append(test_node)
         else:
-            raise MalformedException(
-                "inline test: invalid assume() call, expected 1 arg"
-            )
+            raise MalformedException("inline test: invalid assume() call, expected 1 arg")
 
     def build_assert_eq(self, left_node, comparator_node):
         equal_node = ast.Compare(
@@ -709,9 +595,7 @@ class ExtractInlineTest(ast.NodeTransformer):
                 for index, value in enumerate(node.args[1].elts):
                     comparator_node = self.parse_group(value)
                     assert_node = self.build_assert_eq(left_node, comparator_node)
-                    self.cur_inline_test.parameterized_inline_tests[
-                        index
-                    ].check_stmts.append(assert_node)
+                    self.cur_inline_test.parameterized_inline_tests[index].check_stmts.append(assert_node)
             else:
                 comparator_node = self.parse_group(node.args[1])
                 assert_node = self.build_assert_eq(left_node, comparator_node)
@@ -724,9 +608,7 @@ class ExtractInlineTest(ast.NodeTransformer):
             test=test_node,
             msg=ast.Call(
                 func=ast.Attribute(
-                    ast.Constant(
-                        "bool({0}) is True\nActual: bool({1}) is False\nExpected: bool({1}) is True\n"
-                    ),
+                    ast.Constant("bool({0}) is True\nActual: bool({1}) is False\nExpected: bool({1}) is True\n"),
                     "format",
                     ast.Load(),
                 ),
@@ -746,26 +628,20 @@ class ExtractInlineTest(ast.NodeTransformer):
                 for index, value in enumerate(node.args[0].elts):
                     test_node = self.parse_group(value)
                     assert_node = self.build_assert_true(test_node)
-                    self.cur_inline_test.parameterized_inline_tests[
-                        index
-                    ].check_stmts.append(assert_node)
+                    self.cur_inline_test.parameterized_inline_tests[index].check_stmts.append(assert_node)
             else:
                 test_node = self.parse_group(node.args[0])
                 assert_node = self.build_assert_true(test_node)
                 self.cur_inline_test.check_stmts.append(assert_node)
         else:
-            raise MalformedException(
-                "inline test: invalid check_true(), expected 1 arg"
-            )
+            raise MalformedException("inline test: invalid check_true(), expected 1 arg")
 
     def build_assert_false(self, operand_node):
         assert_node = ast.Assert(
             test=ast.UnaryOp(op=ast.Not(), operand=operand_node),
             msg=ast.Call(
                 func=ast.Attribute(
-                    ast.Constant(
-                        "bool({0}) is False\nActual: bool({1}) is True\nExpected: bool({1}) is False\n"
-                    ),
+                    ast.Constant("bool({0}) is False\nActual: bool({1}) is True\nExpected: bool({1}) is False\n"),
                     "format",
                     ast.Load(),
                 ),
@@ -785,17 +661,13 @@ class ExtractInlineTest(ast.NodeTransformer):
                 for index, value in enumerate(node.args[0].elts):
                     operand_node = self.parse_group(value)
                     assert_node = self.build_assert_false(operand_node)
-                    self.cur_inline_test.parameterized_inline_tests[
-                        index
-                    ].check_stmts.append(assert_node)
+                    self.cur_inline_test.parameterized_inline_tests[index].check_stmts.append(assert_node)
             else:
                 operand_node = self.parse_group(node.args[0])
                 assert_node = self.build_assert_false(operand_node)
                 self.cur_inline_test.check_stmts.append(assert_node)
         else:
-            raise MalformedException(
-                "inline test: invalid check_false(), expected 1 arg"
-            )
+            raise MalformedException("inline test: invalid check_false(), expected 1 arg")
 
     def build_assert_neq(self, left_node, comparator_node):
         equal_node = ast.Compare(
@@ -831,17 +703,13 @@ class ExtractInlineTest(ast.NodeTransformer):
                 for index, value in enumerate(node.args[1].elts):
                     comparator_node = self.parse_group(value)
                     assert_node = self.build_assert_neq(left_node, comparator_node)
-                    self.cur_inline_test.parameterized_inline_tests[
-                        index
-                    ].check_stmts.append(assert_node)
+                    self.cur_inline_test.parameterized_inline_tests[index].check_stmts.append(assert_node)
             else:
                 comparator_node = self.parse_group(node.args[1])
                 assert_node = self.build_assert_neq(left_node, comparator_node)
                 self.cur_inline_test.check_stmts.append(assert_node)
         else:
-            raise MalformedException(
-                "inline test: invalid check_neq(), expected 2 args"
-            )
+            raise MalformedException("inline test: invalid check_neq(), expected 2 args")
 
     def build_assert_none(self, left_node):
         equal_node = ast.Compare(
@@ -870,17 +738,13 @@ class ExtractInlineTest(ast.NodeTransformer):
                 for index, value in enumerate(node.args[0].elts):
                     operand_node = self.parse_group(value)
                     assert_node = self.build_assert_none(operand_node)
-                    self.cur_inline_test.parameterized_inline_tests[
-                        index
-                    ].check_stmts.append(assert_node)
+                    self.cur_inline_test.parameterized_inline_tests[index].check_stmts.append(assert_node)
             else:
                 operand_node = self.parse_group(node.args[0])
                 assert_node = self.build_assert_none(operand_node)
                 self.cur_inline_test.check_stmts.append(assert_node)
         else:
-            raise MalformedException(
-                "inline test: invalid check_none(), expected 1 arg"
-            )
+            raise MalformedException("inline test: invalid check_none(), expected 1 arg")
 
     def build_assert_not_none(self, left_node):
         equal_node = ast.Compare(
@@ -909,17 +773,13 @@ class ExtractInlineTest(ast.NodeTransformer):
                 for index, value in enumerate(node.args[0].elts):
                     operand_node = self.parse_group(value)
                     assert_node = self.build_assert_not_none(operand_node)
-                    self.cur_inline_test.parameterized_inline_tests[
-                        index
-                    ].check_stmts.append(assert_node)
+                    self.cur_inline_test.parameterized_inline_tests[index].check_stmts.append(assert_node)
             else:
                 operand_node = self.parse_group(node.args[0])
                 assert_node = self.build_assert_not_none(operand_node)
                 self.cur_inline_test.check_stmts.append(assert_node)
         else:
-            raise MalformedException(
-                "inline test: invalid check_not_none(), expected 1 arg"
-            )
+            raise MalformedException("inline test: invalid check_not_none(), expected 1 arg")
 
     def build_assert_same(self, left_node, comparator_node):
         equal_node = ast.Compare(
@@ -955,17 +815,13 @@ class ExtractInlineTest(ast.NodeTransformer):
                 for index, value in enumerate(node.args[1].elts):
                     comparator_node = self.parse_group(value)
                     assert_node = self.build_assert_same(left_node, comparator_node)
-                    self.cur_inline_test.parameterized_inline_tests[
-                        index
-                    ].check_stmts.append(assert_node)
+                    self.cur_inline_test.parameterized_inline_tests[index].check_stmts.append(assert_node)
             else:
                 comparator_node = self.parse_group(node.args[1])
                 assert_node = self.build_assert_same(left_node, comparator_node)
                 self.cur_inline_test.check_stmts.append(assert_node)
         else:
-            raise MalformedException(
-                "inline test: invalid check_same(), expected 2 args"
-            )
+            raise MalformedException("inline test: invalid check_same(), expected 2 args")
 
     def build_assert_not_same(self, left_node, comparator_node):
         equal_node = ast.Compare(
@@ -1001,17 +857,13 @@ class ExtractInlineTest(ast.NodeTransformer):
                 for index, value in enumerate(node.args[1].elts):
                     comparator_node = self.parse_group(value)
                     assert_node = self.build_assert_not_same(left_node, comparator_node)
-                    self.cur_inline_test.parameterized_inline_tests[
-                        index
-                    ].check_stmts.append(assert_node)
+                    self.cur_inline_test.parameterized_inline_tests[index].check_stmts.append(assert_node)
             else:
                 comparator_node = self.parse_group(node.args[1])
                 assert_node = self.build_assert_not_same(left_node, comparator_node)
                 self.cur_inline_test.check_stmts.append(assert_node)
         else:
-            raise MalformedException(
-                "inline test: invalid check_not_same(), expected 2 args"
-            )
+            raise MalformedException("inline test: invalid check_not_same(), expected 2 args")
 
     def build_fail(self):
         equal_node = ast.Compare(
@@ -1027,16 +879,10 @@ class ExtractInlineTest(ast.NodeTransformer):
         if len(node.args) == 0:
             self.build_fail()
         else:
-            raise MalformedException(
-                "inline test: fail() does not expect any arguments"
-            )
+            raise MalformedException("inline test: fail() does not expect any arguments")
 
     def parse_group(self, node):
-        if (
-            isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Name)
-            and node.func.id == self.group_str
-        ):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == self.group_str:
             # node type is ast.Call, node.func type is ast.Name
             if sys.version_info >= (3, 8, 0):
                 index_args = [arg.value for arg in node.args]
@@ -1044,18 +890,14 @@ class ExtractInlineTest(ast.NodeTransformer):
                 # python3.7 type of arg is ast.Num which does not in higher version
                 index_args = [arg.n for arg in node.args]
             if self.cur_inline_test.prev_stmt_type != PrevStmtType.CondExpr:
-                raise MalformedException(
-                    "inline test: Group() must be called to test a conditional statement"
-                )
+                raise MalformedException("inline test: Group() must be called to test a conditional statement")
             if not self.cur_inline_test.previous_stmts:
                 raise MalformedException("inline test: previous statement not found")
             stmt = self.cur_inline_test.previous_stmts[0]
             for i, index_arg in enumerate(index_args):
                 if isinstance(stmt, ast.BoolOp):
                     if index_arg < 0 or index_arg >= len(stmt.values):
-                        raise MalformedException(
-                            f"inline test: Group() {i} index with value {index_arg} out of range"
-                        )
+                        raise MalformedException(f"inline test: Group() {i} index with value {index_arg} out of range")
                     else:
                         stmt = stmt.values[index_arg]
                         # raise NotImplementedError(index_arg, ast.dump(stmt))
@@ -1064,15 +906,11 @@ class ExtractInlineTest(ast.NodeTransformer):
             return node
 
     def parse_parameterized_test(self):
-        for index, parameterized_test in enumerate(
-            self.cur_inline_test.parameterized_inline_tests
-        ):
+        for index, parameterized_test in enumerate(self.cur_inline_test.parameterized_inline_tests):
             parameterized_test.previous_stmts = self.cur_inline_test.previous_stmts
             parameterized_test.prev_stmt_type = self.cur_inline_test.prev_stmt_type
             parameterized_test.lineno = self.cur_inline_test.lineno
-            parameterized_test.test_name = (
-                self.cur_inline_test.test_name + "_" + str(index)
-            )
+            parameterized_test.test_name = self.cur_inline_test.test_name + "_" + str(index)
 
     def parse_inline_test(self, node):
         inline_test_calls = []
@@ -1080,16 +918,11 @@ class ExtractInlineTest(ast.NodeTransformer):
         inline_test_calls.reverse()
 
         if len(inline_test_calls) <= 1:
-            raise MalformedException(
-                "inline test: invalid inline test, requires at least one assertion"
-            )
+            raise MalformedException("inline test: invalid inline test, requires at least one assertion")
 
         # "itest()" or "itest('test name')" or "itest('test name', True)" or "itest(parameterized=True)" or "itest(test_name='test name', parameterized=True)"
         constructor_call = inline_test_calls[0]
-        if (
-            isinstance(constructor_call.func, ast.Name)
-            and constructor_call.func.id == self.class_name_str
-        ):
+        if isinstance(constructor_call.func, ast.Name) and constructor_call.func.id == self.class_name_str:
             self.parse_constructor(constructor_call)
         else:
             raise MalformedException("inline test: invalid inline test constructor")
@@ -1104,10 +937,7 @@ class ExtractInlineTest(ast.NodeTransformer):
 
         # "given(a, 1)"
         for call in inline_test_calls[inline_test_call_index:]:
-            if (
-                isinstance(call.func, ast.Attribute)
-                and call.func.attr == self.given_str
-            ):
+            if isinstance(call.func, ast.Attribute) and call.func.attr == self.given_str:
                 self.parse_given(call)
                 inline_test_call_index += 1
             else:
@@ -1142,15 +972,11 @@ class ExtractInlineTest(ast.NodeTransformer):
                     f"inline test: given() must be called before check_eq()/check_true()/check_false()"
                 )
             else:
-                raise MalformedException(
-                    f"inline test: invalid function call {self.node_to_source_code(call.func)}"
-                )
+                raise MalformedException(f"inline test: invalid function call {self.node_to_source_code(call.func)}")
 
         if self.cur_inline_test.parameterized:
             self.parse_parameterized_test()
-            self.inline_test_list.extend(
-                self.cur_inline_test.parameterized_inline_tests
-            )
+            self.inline_test_list.extend(self.cur_inline_test.parameterized_inline_tests)
         else:
             # add current inline test to the list
             self.inline_test_list.append(self.cur_inline_test)
@@ -1261,9 +1087,7 @@ class InlineTestFinder:
                 valname = "%s" % (valname)
 
                 # Recurse to functions & classes.
-                if (
-                    self._is_routine(val) or inspect.isclass(val)
-                ) and self._from_module(module, val):
+                if (self._is_routine(val) or inspect.isclass(val)) and self._from_module(module, val):
                     self._find(tests, val, module, globs, seen)
 
         # Look for tests in a class's contained objects.
@@ -1274,11 +1098,9 @@ class InlineTestFinder:
                     val = val.__func__
 
                 # Recurse to methods, properties, and nested classes.
-                if (
-                    inspect.isroutine(val)
-                    or inspect.isclass(val)
-                    or isinstance(val, property)
-                ) and self._from_module(module, val):
+                if (inspect.isroutine(val) or inspect.isclass(val) or isinstance(val, property)) and self._from_module(
+                    module, val
+                ):
                     valname = "%s" % (valname)
                     self._find(tests, val, module, globs, seen)
 
@@ -1334,9 +1156,7 @@ class InlinetestItem(pytest.Item):
         if self.dtest is not None:
             self.fixture_request = _setup_fixtures(self)
             globs = dict(getfixture=self.fixture_request.getfixturevalue)
-            for name, value in self.fixture_request.getfixturevalue(
-                "inlinetest_namespace"
-            ).items():
+            for name, value in self.fixture_request.getfixturevalue("inlinetest_namespace").items():
                 globs[name] = value
             self.dtest.globs.update(globs)
 
@@ -1374,12 +1194,7 @@ class InlinetestModule(pytest.Module):
                     sorted_ordering[i] = tags.index(tag)
 
         # sorting the list based on their tag positions
-        prio_sorted = [
-            val
-            for (_, val) in sorted(
-                zip(sorted_ordering, prio_unsorted), key=lambda x: x[0]
-            )
-        ]
+        prio_sorted = [val for (_, val) in sorted(zip(sorted_ordering, prio_unsorted), key=lambda x: x[0])]
         prio_sorted.extend(unordered)
 
         return prio_sorted
@@ -1414,9 +1229,7 @@ class InlinetestModule(pytest.Module):
             if ordered_list is not None:
                 for test in ordered_list:
                     if (
-                        test.is_empty()
-                        or (group_tags and len(set(test.tag) & set(group_tags)) == 0)
-                        or test.disabled
+                        test.is_empty() or (group_tags and len(set(test.tag) & set(group_tags)) == 0) or test.disabled
                     ):  # skip empty inline tests and tests with tags not in the tag list and disabled tests
                         continue
 
