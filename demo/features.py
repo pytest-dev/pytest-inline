@@ -3,12 +3,14 @@ from inline import itest
 
 ### display name: customize test name, default name is filename+line number
 
+
 def inline_test_with_name(a):
     b = a + 1
     itest(test_name="test-with-name").given(a, 1).check_eq(b, 2)
 
 
 ### parameterized tests: pass different sets of inputs to tests
+
 
 def inline_test_parameterized(a):
     b = a + 1
@@ -17,12 +19,14 @@ def inline_test_parameterized(a):
 
 ### repeated tests: repeat a test a specified number of times
 
+
 def inline_test_repeated(a):
     b = a + 1
     itest(repeated=3).given(a, 1).check_eq(b, 2)
 
 
 ### disabled tests: disable a test
+
 
 def inline_test_disabled(a):
     b = a + 1
@@ -31,10 +35,12 @@ def inline_test_disabled(a):
 
 ### timeout: fail a test if the execution time exceeds a given duration
 
+
 def slow_method():
     time.sleep(0.01)
     # time.sleep(0.1)
     return 1
+
 
 def inline_test_with_timeout(a):
     b = a + 1
@@ -44,12 +50,14 @@ def inline_test_with_timeout(a):
 
 ### assumptions: execute test when the assumption is satisfied
 
+
 def inline_test_with_assume(a):
     b = a + 1
     itest().assume(False).given(a, 1).check_eq(b, 2)
 
 
 ### more assertions
+
 
 def inline_test_assertions(a):
     b = a + 1
@@ -66,6 +74,7 @@ def inline_test_assertions(a):
 
 ### tagged tests: tag tests for filtering
 ### run tests in order: Run some tests first
+
 
 def inline_test_with_tags(a):
     b = a + 1

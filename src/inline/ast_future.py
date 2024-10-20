@@ -169,10 +169,7 @@ class _Unparser(NodeVisitor):
         return that docstring node, None otherwise.
 
         Logic mirrored from ``_PyAST_GetDocString``."""
-        if (
-            not isinstance(node, (AsyncFunctionDef, FunctionDef, ClassDef, Module))
-            or len(node.body) < 1
-        ):
+        if not isinstance(node, (AsyncFunctionDef, FunctionDef, ClassDef, Module)) or len(node.body) < 1:
             return None
         node = node.body[0]
         if not isinstance(node, Expr):
@@ -212,9 +209,7 @@ class _Unparser(NodeVisitor):
             self.traverse(node.body)
 
     def visit_Module(self, node):
-        self._type_ignores = {
-            ignore.lineno: f"ignore{ignore.tag}" for ignore in node.type_ignores
-        }
+        self._type_ignores = {ignore.lineno: f"ignore{ignore.tag}" for ignore in node.type_ignores}
         self._write_docstring_and_traverse_body(node)
         self._type_ignores.clear()
 
@@ -267,9 +262,7 @@ class _Unparser(NodeVisitor):
 
     def visit_AnnAssign(self, node):
         self.fill()
-        with self.delimit_if(
-            "(", ")", not node.simple and isinstance(node.target, Name)
-        ):
+        with self.delimit_if("(", ")", not node.simple and isinstance(node.target, Name)):
             self.traverse(node.target)
         self.write(": ")
         self.traverse(node.annotation)
@@ -476,9 +469,7 @@ class _Unparser(NodeVisitor):
         with self.block(extra=self.get_type_comment(node)):
             self.traverse(node.body)
 
-    def _str_literal_helper(
-        self, string, *, quote_types=_ALL_QUOTES, escape_special_whitespace=False
-    ):
+    def _str_literal_helper(self, string, *, quote_types=_ALL_QUOTES, escape_special_whitespace=False):
         """Helper for writing string literals, minimizing escapes.
         Returns the tuple (string literal to write, possible quote types).
         """
@@ -601,11 +592,7 @@ class _Unparser(NodeVisitor):
         if isinstance(value, (float, complex)):
             # Substitute overflowing decimal literal for AST infinities,
             # and inf - inf for NaNs.
-            self.write(
-                repr(value)
-                .replace("inf", _INFSTR)
-                .replace("nan", f"({_INFSTR}-{_INFSTR})")
-            )
+            self.write(repr(value).replace("inf", _INFSTR).replace("nan", f"({_INFSTR}-{_INFSTR})"))
         elif self._avoid_backslashes and isinstance(value, str):
             self._write_str_avoiding_backslashes(value)
         else:
@@ -704,9 +691,7 @@ class _Unparser(NodeVisitor):
                 write_key_value_pair(k, v)
 
         with self.delimit("{", "}"):
-            self.interleave(
-                lambda: self.write(", "), write_item, zip(node.keys, node.values)
-            )
+            self.interleave(lambda: self.write(", "), write_item, zip(node.keys, node.values))
 
     def visit_Tuple(self, node):
         with self.delimit("(", ")"):
@@ -819,9 +804,7 @@ class _Unparser(NodeVisitor):
 
         with self.require_parens(operator_precedence, node):
             s = f" {operator} "
-            self.interleave(
-                lambda: self.write(s), increasing_level_traverse, node.values
-            )
+            self.interleave(lambda: self.write(s), increasing_level_traverse, node.values)
 
     def visit_Attribute(self, node):
         self.set_precedence(_Precedence.ATOM, node.value)

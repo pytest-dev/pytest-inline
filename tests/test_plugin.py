@@ -2,6 +2,7 @@ from inline.plugin import InlinetestItem, MalformedException, TimeoutException
 from _pytest.pytester import Pytester
 import pytest
 
+
 # pytest -p pytester
 class TestInlinetests:
     def test_inline_parser(self, pytester: Pytester):
@@ -257,9 +258,7 @@ class TestInlinetests:
     """
         )
         for x in (pytester.path, checkfile):
-            reprec = pytester.inline_run(
-                "--inlinetest-group=add", "--inlinetest-group=minus"
-            )
+            reprec = pytester.inline_run("--inlinetest-group=add", "--inlinetest-group=minus")
             items = [x.item for x in reprec.getcalls("pytest_itemcollected")]
             assert len(items) == 2
 
@@ -459,9 +458,7 @@ class TestInlinetests:
     """
         )
         for x in (pytester.path, checkfile):
-            reprec = pytester.inline_run(
-                "--inlinetest-order=minus", "--inlinetest-order=add"
-            )
+            reprec = pytester.inline_run("--inlinetest-order=minus", "--inlinetest-order=add")
             items = [x.item for x in reprec.getcalls("pytest_itemcollected")]
             assert len(items) == 2
             assert items[0].dtest.test_name == "2"
@@ -481,9 +478,7 @@ class TestInlinetests:
     """
         )
         for x in (pytester.path, checkfile):
-            reprec = pytester.inline_run(
-                "--inlinetest-order=minus", "--inlinetest-order=add"
-            )
+            reprec = pytester.inline_run("--inlinetest-order=minus", "--inlinetest-order=add")
             items = [x.item for x in reprec.getcalls("pytest_itemcollected")]
             assert len(items) == 3
 
@@ -507,9 +502,7 @@ class TestInlinetests:
     """
         )
         for x in (pytester.path, checkfile):
-            reprec = pytester.inline_run(
-                "--inlinetest-order=minus", "--inlinetest-order=add"
-            )
+            reprec = pytester.inline_run("--inlinetest-order=minus", "--inlinetest-order=add")
             items = [x.item for x in reprec.getcalls("pytest_itemcollected")]
             assert len(items) == 4
 
@@ -700,9 +693,7 @@ class TestInlinetests:
     """
         )
         for x in (pytester.path, checkfile):
-            pytester.makefile(
-                ".ini", pytest="[pytest]\naddopts = -p pytester --inlinetest-only"
-            )
+            pytester.makefile(".ini", pytest="[pytest]\naddopts = -p pytester --inlinetest-only")
             items, reprec = pytester.inline_genitems(x)
             assert len(items) == 1
             res = pytester.runpytest()
@@ -721,9 +712,7 @@ class TestInlinetests:
     """
         )
         for x in (pytester.path, checkfile):
-            pytester.makefile(
-                ".ini", pytest="[pytest]\naddopts = -p pytester --inlinetest-disable"
-            )
+            pytester.makefile(".ini", pytest="[pytest]\naddopts = -p pytester --inlinetest-disable")
             items, reprec = pytester.inline_genitems(x)
             assert len(items) == 1
             res = pytester.runpytest()

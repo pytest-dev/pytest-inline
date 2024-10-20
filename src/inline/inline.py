@@ -119,12 +119,12 @@ class itest:
     def fail(self):
         """
         Fails the test
-        
+
         :returns: Inline object
         :raises: AssertionError
         """
-    
-    def assume(self, condition:bool):
+
+    def assume(self, condition: bool):
         """
         Executes the test under the assuming the given condition is true. If supplied, must be supplied immediately after itest().
         Can only supply 1 assume statement.
@@ -132,6 +132,7 @@ class itest:
         :param condition: a boolean condition
         :raises: AssertionError
         """
+
 
 class Group:
     def __init__(self, *arg):
