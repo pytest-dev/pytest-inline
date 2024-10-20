@@ -36,7 +36,7 @@ classifiers = [
 dependencies = ["pytest>=7.0,<9.0"]
 
 [project.optional-dependencies]
-dev = ["hatch", "coverage[toml]", "black", "ruff", "tox"]
+dev = ["hatch", "coverage[toml]", "black", "ruff", "tox", "tox-gh"]
 
 [project.urls]
 Issues = "https://github.com/pytest-dev/pytest-inline/issues"
