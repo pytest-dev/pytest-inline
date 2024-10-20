@@ -7,7 +7,7 @@ name = "inline"
 dynamic = ["version"]
 description = "A pytest plugin for writing inline tests"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.7"
 license = { file = "LICENSE" }
 authors = [{ name = "Yu Liu", email = "im.yukiliu@gmail.com" }]
 maintainers = [
@@ -33,10 +33,10 @@ classifiers = [
     "Operating System :: OS Independent",
     "License :: OSI Approved :: MIT License",
 ]
-dependencies = ["pytest~=7.0"]
+dependencies = ["pytest>=7.0,<9.0"]
 
 [project.optional-dependencies]
-dev = ["hatch", "coverage[toml]", "black", "ruff", "tox"]
+dev = ["hatch", "coverage[toml]", "black", "ruff", "tox>=4.19"]
 
 [project.urls]
 Issues = "https://github.com/pytest-dev/pytest-inline/issues"
