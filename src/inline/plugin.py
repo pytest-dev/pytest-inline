@@ -11,15 +11,30 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import pytest
 from _pytest.main import Session
-from _pytest.pathlib import fnmatch_ex, import_path
+from _pytest.pathlib import fnmatch_ex
 from _pytest.python import Package
-from pytest import Collector, Config, FixtureRequest, Parser
+from pytest import Collector, Config, Parser
 
 if sys.version_info >= (3, 9, 0):
     from ast import unparse as ast_unparse
 else:
     from .ast_future import unparse as ast_unparse
 
+if pytest.version_tuple >= (8, 0, 0):
+    # fixture API changed in pytest 8
+    # https://github.com/pytest-dev/pytest/issues/11218
+    from _pytest.fixtures import TopRequest  # noqa: I001
+
+    # consider_namespace_packages is added as a required argument in pytest 8
+    # https://github.com/pytest-dev/pytest/issues/11475
+    from _pytest.pathlib import import_path as _import_path  # noqa: I001
+
+    def import_path(*args, **kwargs):
+        return _import_path(*args, **kwargs, consider_namespace_packages=False)
+
+else:
+    from pytest import FixtureRequest  # noqa: I001
+    from _pytest.pathlib import import_path  # noqa: I001
 
 # Alternatively, invoke pytest with -p inline)
 # pytest_plugins = ["inline"]
@@ -1136,8 +1151,32 @@ class InlinetestItem(pytest.Item):
         self.runner = runner
         self.dtest = dtest
         self.obj = None
-        self.fixture_request: Optional[FixtureRequest] = None
-        self.add_marker(pytest.mark.inline)
+        self._init_fixtureinfo_request()
+
+    # fixture API changed in pytest 8
+    # https://github.com/pytest-dev/pytest/issues/11218
+    if pytest.version_tuple >= (8, 0, 0):
+
+        def _init_fixtureinfo_request(self) -> None:
+            self.funcargs: Dict[str, object] = {}
+            fm = self.session._fixturemanager
+            fixtureinfo = fm.getfixtureinfo(node=self, func=None, cls=None)
+            self._fixtureinfo = fixtureinfo
+            self.fixturenames = fixtureinfo.names_closure
+            self._request = TopRequest(self, _ispytest=True)  # type: ignore[arg-type]
+
+    else:
+
+        def _init_fixtureinfo_request(self) -> None:
+            def func() -> None:
+                pass
+
+            self.funcargs: Dict[str, object] = {}
+            fm = self.session._fixturemanager
+            self._fixtureinfo = fm.getfixtureinfo(  # type: ignore[attr-defined]
+                node=self, func=func, cls=None, funcargs=False
+            )
+            self._request = FixtureRequest(self, _ispytest=True)  # type: ignore[arg-type]
 
     @classmethod
     def from_parent(
@@ -1154,9 +1193,9 @@ class InlinetestItem(pytest.Item):
 
     def setup(self) -> None:
         if self.dtest is not None:
-            self.fixture_request = _setup_fixtures(self)
-            globs = dict(getfixture=self.fixture_request.getfixturevalue)
-            for name, value in self.fixture_request.getfixturevalue("inlinetest_namespace").items():
+            self._request._fillfixtures()
+            globs = dict(getfixture=self._request.getfixturevalue)
+            for name, value in self._request.getfixturevalue("inlinetest_namespace").items():
                 globs[name] = value
             self.dtest.globs.update(globs)
 
@@ -1239,22 +1278,6 @@ class InlinetestModule(pytest.Module):
                         runner=runner,
                         dtest=test,
                     )
-
-
-def _setup_fixtures(inlinetest_item: InlinetestItem) -> FixtureRequest:
-    """Used by InlinetestItem to setup fixture information."""
-
-    def func() -> None:
-        pass
-
-    inlinetest_item.funcargs = {}  # type: ignore[attr-defined]
-    fm = inlinetest_item.session._fixturemanager
-    inlinetest_item._fixtureinfo = fm.getfixtureinfo(  # type: ignore[attr-defined]
-        node=inlinetest_item, func=func, cls=None, funcargs=False
-    )
-    fixture_request = FixtureRequest(inlinetest_item, _ispytest=True)
-    fixture_request._fillfixtures()
-    return fixture_request
 
 
 ######################################################################################
