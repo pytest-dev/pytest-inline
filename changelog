@@ -1,4 +1,7 @@
 # Changelog
+## [1.1.0]
+- Change: Support pytest 8
+
 ## [1.0.5]
 - Change: Remove unused code
 - Change: Capture a general Exception (not limited to ImportError and ModuleNotFoundError) when attempting to import modules during collection phase
