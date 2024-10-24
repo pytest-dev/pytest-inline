@@ -2,8 +2,11 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/inline"]
+
 [project]
-name = "inline"
+name = "pytest-inline"
 dynamic = ["version"]
 description = "A pytest plugin for writing inline tests"
 readme = "README.md"
