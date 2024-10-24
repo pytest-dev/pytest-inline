@@ -10,9 +10,7 @@ from types import ModuleType
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import pytest
-from _pytest.main import Session
 from _pytest.pathlib import fnmatch_ex
-from _pytest.python import Package
 from pytest import Collector, Config, Parser
 
 if sys.version_info >= (3, 9, 0):
@@ -32,12 +30,20 @@ if pytest.version_tuple >= (8, 0, 0):
     def import_path(*args, **kwargs):
         return _import_path(*args, **kwargs, consider_namespace_packages=False)
 
+    # scope architecture changed in pytest 8
+    # https://github.com/pytest-dev/pytest/issues/7777
+    from _pytest.main import Session, Dir  # noqa: I001
+    from _pytest.python import Package  # noqa: I001
+
+    HIGHLEVEL_SCOPES = (Session, Dir, Package)
+
 else:
     from pytest import FixtureRequest  # noqa: I001
     from _pytest.pathlib import import_path  # noqa: I001
+    from _pytest.main import Session  # noqa: I001
+    from _pytest.python import Package  # noqa: I001
 
-# Alternatively, invoke pytest with -p inline)
-# pytest_plugins = ["inline"]
+    HIGHLEVEL_SCOPES = (Session, Package)
 
 
 # register argparse-style options and ini-file values, called once at the beginning of a test run
@@ -114,7 +120,7 @@ def pytest_configure(config):
 
 @pytest.hookimpl()
 def pytest_collectstart(collector):
-    if not isinstance(collector, (Session, Package)):
+    if not isinstance(collector, HIGHLEVEL_SCOPES):
         if collector.config.getoption("inlinetest_only") and (not isinstance(collector, InlinetestModule)):
             collector.collect = lambda: []  # type: ignore[assignment]
         if collector.config.getoption("inlinetest_disable") and isinstance(collector, InlinetestModule):
