@@ -171,6 +171,7 @@ class InlineTest:
         self.tag = []
         self.disabled = False
         self.timeout = -1.0
+        self.devices = None
         self.globs = {}
 
     def to_test(self):
@@ -293,6 +294,8 @@ class ExtractInlineTest(ast.NodeTransformer):
     arg_tag_str = "tag"
     arg_disabled_str = "disabled"
     arg_timeout_str = "timeout"
+    arg_devices_str = "devices"
+    check_differential_testing_str = "check_differential_testing"
     assume = "assume"
     inline_module_imported = False
 
@@ -362,7 +365,7 @@ class ExtractInlineTest(ast.NodeTransformer):
         """
         Parse a constructor call.
         """
-        NUM_OF_ARGUMENTS = 6
+        NUM_OF_ARGUMENTS = 7
         if len(node.args) + len(node.keywords) <= NUM_OF_ARGUMENTS:
             # positional arguments
             if sys.version_info >= (3, 8, 0):
@@ -394,6 +397,17 @@ class ExtractInlineTest(ast.NodeTransformer):
                         and (isinstance(arg.value, float) or isinstance(arg.value, int))
                     ):
                         self.cur_inline_test.timeout = arg.value
+                    
+                    elif index == 6 and isinstance(arg, ast.List):
+                        devices = []
+                        for elt in arg.elts:
+                            if not (isinstance(elt, ast.Constant) and isinstance(elt.value, str)):
+                                raise MalformedException("devices can only be List of string")
+                            if elt.value not in {"cpu", "cuda", "mps"}:
+                                raise MalformedException(f"Invalid device: {elt.value}. Must be one of ['cpu', 'cuda', 'mps']")
+                            devices.append(elt.value)
+                        self.cur_inline_test.devices = devices
+
                     else:
                         raise MalformedException(
                             f"inline test: {self.class_name_str}() accepts {NUM_OF_ARGUMENTS} arguments. 'test_name' must be a string constant, 'parameterized' must be a boolean constant, 'repeated' must be a positive integer, 'tag' must be a list of string, 'timeout' must be a positive float"
@@ -431,6 +445,16 @@ class ExtractInlineTest(ast.NodeTransformer):
                                 raise MalformedException(f"tag can only be List of string")
                             tags.append(elt.value)
                         self.cur_inline_test.tag = tags
+                    # Add devices handling for keyword args
+                    elif keyword.arg == self.arg_devices_str and isinstance(keyword.value, ast.List):
+                        devices = []
+                        for elt in keyword.value.elts:
+                            if not (isinstance(elt, ast.Constant) and isinstance(elt.value, str)):
+                                raise MalformedException("devices can only be List of string")
+                            if elt.value not in {"cpu", "cuda", "mps"}:
+                                raise MalformedException(f"Invalid device: {elt.value}. Must be one of ['cpu', 'cuda', 'mps']")
+                            devices.append(elt.value)
+                        self.cur_inline_test.devices = devices
                     # check if "disabled" is a boolean
                     elif (
                         keyword.arg == self.arg_disabled_str
@@ -447,6 +471,16 @@ class ExtractInlineTest(ast.NodeTransformer):
                         if keyword.value.value <= 0.0:
                             raise MalformedException(f"inline test: {self.arg_timeout_str} must be greater than 0")
                         self.cur_inline_test.timeout = keyword.value.value
+                    # Add devices handling for Python 3.7
+                    elif index == 6 and isinstance(arg, ast.List):
+                        devices = []
+                        for elt in arg.elts:
+                            if not (isinstance(elt, ast.Str) and isinstance(elt.s, str)):  # Note: ast.Str for Python 3.7
+                                raise MalformedException("devices can only be List of string")
+                            if elt.s not in {"cpu", "cuda", "mps"}:
+                                raise MalformedException(f"Invalid device: {elt.s}. Must be one of ['cpu', 'cuda', 'mps']")
+                            devices.append(elt.s)
+                        self.cur_inline_test.devices = devices
                     else:
                         raise MalformedException(
                             f"inline test: {self.class_name_str}() accepts {NUM_OF_ARGUMENTS} arguments. 'test_name' must be a string constant, 'parameterized' must be a boolean constant, 'repeated' must be a positive integer, 'tag' must be a list of string, 'timeout' must be a positive float"
@@ -536,6 +570,19 @@ class ExtractInlineTest(ast.NodeTransformer):
                         if keyword.value.n <= 0.0:
                             raise MalformedException(f"inline test: {self.arg_timeout_str} must be greater than 0")
                         self.cur_inline_test.timeout = keyword.value.n
+                    #keyword arg for devices
+                    elif (
+                        keyword.arg == self.arg_devices_str 
+                        and isinstance(keyword.value, ast.List)
+                    ):
+                        devices = []
+                        for elt in keyword.value.elts:
+                            if not (isinstance(elt, ast.Str) and isinstance(elt.s, str)):
+                                raise MalformedException("devices can only be List of string")
+                            if elt.s not in {"cpu", "cuda", "mps"}:
+                                raise MalformedException(f"Invalid device: {elt.s}. Must be one of ['cpu', 'cuda', 'mps']")
+                            devices.append(elt.s)
+                        self.cur_inline_test.devices = devices
                     else:
                         raise MalformedException(
                             f"inline test: {self.class_name_str}() accepts {NUM_OF_ARGUMENTS} arguments. 'test_name' must be a string constant, 'parameterized' must be a boolean constant, 'repeated' must be a positive integer, 'tag' must be a list of string, 'timeout' must be a positive float"
@@ -885,6 +932,80 @@ class ExtractInlineTest(ast.NodeTransformer):
                 self.cur_inline_test.check_stmts.append(assert_node)
         else:
             raise MalformedException("inline test: invalid check_not_same(), expected 2 args")
+    
+    def parse_check_differential_testing(self, node):
+  
+        if self.cur_inline_test.devices is None:
+            raise MalformedException("check_differential_testing can only be used when devices parameter is provided")
+            
+        if len(node.args) == 1:
+            output_node = self.parse_group(node.args[0])
+            
+            if self.cur_inline_test.parameterized:
+                self.parameterized_inline_tests_init(node.args[0])
+                for index, _ in enumerate(node.args[0].elts):
+                    # Compare outputs between consecutive devices
+                    for i in range(len(self.cur_inline_test.devices)-1):
+                        device1 = self.cur_inline_test.devices[i]
+                        device2 = self.cur_inline_test.devices[i+1]
+                        assert_node = self.build_assert_eq(
+                            ast.Call(
+                                func=ast.Attribute(
+                                    value=ast.Call(
+                                        func=ast.Attribute(value=output_node, attr='to'),
+                                        args=[ast.Constant(value=device1)],
+                                        keywords=[]
+                                    ),
+                                    attr='allclose'
+                                ),
+                                args=[
+                                    ast.Call(
+                                        func=ast.Attribute(value=output_node, attr='to'),
+                                        args=[ast.Constant(value=device2)],
+                                        keywords=[]
+                                    )
+                                ],
+                                keywords=[
+                                    ast.keyword(arg='rtol', value=ast.Constant(value=1e-5)),
+                                    ast.keyword(arg='atol', value=ast.Constant(value=1e-5))
+                                ]
+                            ),
+                            ast.Constant(value=True)
+                        )
+                        self.cur_inline_test.parameterized_inline_tests[index].check_stmts.append(assert_node)
+            else:
+                # Non-parameterized case
+                for i in range(len(self.cur_inline_test.devices)-1):
+                    device1 = self.cur_inline_test.devices[i]
+                    device2 = self.cur_inline_test.devices[i+1]
+                    assert_node = self.build_assert_eq(
+                        ast.Call(
+                            func=ast.Attribute(
+                                value=ast.Call(
+                                    func=ast.Attribute(value=output_node, attr='to'),
+                                    args=[ast.Constant(value=device1)],
+                                    keywords=[]
+                                ),
+                                attr='allclose'
+                            ),
+                            args=[
+                                ast.Call(
+                                    func=ast.Attribute(value=output_node, attr='to'),
+                                    args=[ast.Constant(value=device2)],
+                                    keywords=[]
+                                )
+                            ],
+                            keywords=[
+                                ast.keyword(arg='rtol', value=ast.Constant(value=1e-5)),
+                                ast.keyword(arg='atol', value=ast.Constant(value=1e-5))
+                            ]
+                        ),
+                        ast.Constant(value=True)
+                    )
+                    self.cur_inline_test.check_stmts.append(assert_node)
+        else:
+            raise MalformedException("check_differential_testing() accepts exactly 1 argument")
+
 
     def build_fail(self):
         equal_node = ast.Compare(
@@ -986,11 +1107,13 @@ class ExtractInlineTest(ast.NodeTransformer):
                 self.parse_check_same(call)
             elif call.func.attr == self.check_not_same:
                 self.parse_check_not_same(call)
+            elif call.func.attr == self.check_differential_testing_str:
+                self.parse_check_differential_testing(call)
             elif call.func.attr == self.fail_str:
                 self.parse_fail(call)
             elif call.func.attr == self.given_str:
                 raise MalformedException(
-                    f"inline test: given() must be called before check_eq()/check_true()/check_false()"
+                    f"inline test: given() must be called before check_eq()/check_true()/check_false()/check_differential_testing()"
                 )
             else:
                 raise MalformedException(f"inline test: invalid function call {self.node_to_source_code(call.func)}")
