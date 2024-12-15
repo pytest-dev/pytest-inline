@@ -10,7 +10,7 @@ class itest:
         tag: List = [],
         disabled: bool = False,
         timeout: float = -1.0,
-        devices: List[str] = None,  
+        devices: List = None,  
     ):
         """
         Initialize Inline object with test name / parametrized flag

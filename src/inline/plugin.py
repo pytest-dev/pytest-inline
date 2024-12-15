@@ -935,77 +935,93 @@ class ExtractInlineTest(ast.NodeTransformer):
     
     def parse_check_differential_testing(self, node):
   
-        if self.cur_inline_test.devices is None:
-            raise MalformedException("check_differential_testing can only be used when devices parameter is provided")
-            
-        if len(node.args) == 1:
-            output_node = self.parse_group(node.args[0])
-            
-            if self.cur_inline_test.parameterized:
-                self.parameterized_inline_tests_init(node.args[0])
-                for index, _ in enumerate(node.args[0].elts):
-                    # Compare outputs between consecutive devices
-                    for i in range(len(self.cur_inline_test.devices)-1):
-                        device1 = self.cur_inline_test.devices[i]
-                        device2 = self.cur_inline_test.devices[i+1]
-                        assert_node = self.build_assert_eq(
-                            ast.Call(
-                                func=ast.Attribute(
-                                    value=ast.Call(
-                                        func=ast.Attribute(value=output_node, attr='to'),
-                                        args=[ast.Constant(value=device1)],
-                                        keywords=[]
-                                    ),
-                                    attr='allclose'
-                                ),
-                                args=[
-                                    ast.Call(
-                                        func=ast.Attribute(value=output_node, attr='to'),
-                                        args=[ast.Constant(value=device2)],
-                                        keywords=[]
-                                    )
-                                ],
-                                keywords=[
-                                    ast.keyword(arg='rtol', value=ast.Constant(value=1e-5)),
-                                    ast.keyword(arg='atol', value=ast.Constant(value=1e-5))
-                                ]
-                            ),
-                            ast.Constant(value=True)
-                        )
-                        self.cur_inline_test.parameterized_inline_tests[index].check_stmts.append(assert_node)
-            else:
-                # Non-parameterized case
-                for i in range(len(self.cur_inline_test.devices)-1):
-                    device1 = self.cur_inline_test.devices[i]
-                    device2 = self.cur_inline_test.devices[i+1]
-                    assert_node = self.build_assert_eq(
-                        ast.Call(
-                            func=ast.Attribute(
-                                value=ast.Call(
-                                    func=ast.Attribute(value=output_node, attr='to'),
-                                    args=[ast.Constant(value=device1)],
-                                    keywords=[]
-                                ),
-                                attr='allclose'
-                            ),
-                            args=[
-                                ast.Call(
-                                    func=ast.Attribute(value=output_node, attr='to'),
-                                    args=[ast.Constant(value=device2)],
-                                    keywords=[]
-                                )
-                            ],
-                            keywords=[
-                                ast.keyword(arg='rtol', value=ast.Constant(value=1e-5)),
-                                ast.keyword(arg='atol', value=ast.Constant(value=1e-5))
-                            ]
-                        ),
-                        ast.Constant(value=True)
-                    )
-                    self.cur_inline_test.check_stmts.append(assert_node)
-        else:
-            raise MalformedException("check_differential_testing() accepts exactly 1 argument")
+        if not self.cur_inline_test.devices:
+            raise MalformedException("check_differential_testing can only be used with the 'devices' parameter.")
 
+        if len(node.args) != 1:
+            raise MalformedException("check_differential_testing() requires exactly 1 argument.")
+
+        # Parse the tensor operation
+        output_node = self.parse_group(node.args[0])
+        
+        # Get the original operation from the previous statements
+        original_op = None
+        for stmt in self.cur_inline_test.previous_stmts:
+            if isinstance(stmt, ast.Assign) and stmt.targets[0].id == output_node.id:
+                original_op = stmt.value
+                break
+        
+        if not original_op:
+            raise MalformedException("Could not find original operation for differential testing")
+
+        device_statements = []
+        device_outputs = []
+
+        # Generate device-specific tensors and operations
+        for device in self.cur_inline_test.devices:
+            # Create device-specific input tensor
+            input_var = self.cur_inline_test.given_stmts[0].targets[0].id
+            device_input_var = f"{input_var}_{device}"
+            device_input_stmt = ast.Assign(
+                targets=[ast.Name(id=device_input_var, ctx=ast.Store())],
+                value=ast.Call(
+                    func=ast.Attribute(
+                        value=self.cur_inline_test.given_stmts[0].value,
+                        attr="to"
+                    ),
+                    args=[ast.Constant(value=device)],
+                    keywords=[]
+                )
+            )
+            device_statements.append(device_input_stmt)
+
+            # Create device-specific operation result
+            device_output_var = f"output_{device}"
+            # Copy the original operation but replace the input tensor with device-specific one
+            device_op = copy.deepcopy(original_op)
+            # Replace the input tensor reference in the operation
+            for node in ast.walk(device_op):
+                if isinstance(node, ast.Name) and node.id == input_var:
+                    node.id = device_input_var
+
+            device_output_stmt = ast.Assign(
+                targets=[ast.Name(id=device_output_var, ctx=ast.Store())],
+                value=device_op
+            )
+            device_statements.append(device_output_stmt)
+            device_outputs.append(device_output_var)
+
+        # Add the comparison across devices
+        comparisons = []
+        for i in range(len(device_outputs) - 1):
+            device1_var = device_outputs[i]
+            device2_var = device_outputs[i + 1]
+            
+            comparison = self.build_assert_eq(
+                ast.Call(
+                    func=ast.Attribute(
+                        value=ast.Name(id=device1_var, ctx=ast.Load()),
+                        attr="allclose"
+                    ),
+                    args=[
+                        ast.Name(id=device2_var, ctx=ast.Load()),
+                    ],
+                    keywords=[
+                        ast.keyword(arg="rtol", value=ast.Constant(value=1e-5)),
+                        ast.keyword(arg="atol", value=ast.Constant(value=1e-5))
+                    ]
+                ),
+                ast.Constant(value=True)
+            )
+            comparisons.append(comparison)
+
+        # Update the inline test object
+        self.cur_inline_test.previous_stmts.extend(device_statements)
+        self.cur_inline_test.check_stmts.extend(comparisons)
+
+    
+
+    
 
     def build_fail(self):
         equal_node = ast.Compare(
@@ -1254,6 +1270,8 @@ class InlineTestFinder:
 ######################################################################
 class InlineTestRunner:
     def run(self, test: InlineTest, out: List) -> None:
+        test_str = test.to_test()
+        print(test_str)
         tree = ast.parse(test.to_test())
         codeobj = compile(tree, filename="<ast>", mode="exec")
         start_time = time.time()
