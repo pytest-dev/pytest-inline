@@ -992,19 +992,54 @@ class ExtractInlineTest(ast.NodeTransformer):
             device_outputs.append(device_output_var)
 
         # Add the comparison across devices
+        # Always convert tensors to CPU for comparison
         comparisons = []
         for i in range(len(device_outputs) - 1):
             device1_var = device_outputs[i]
             device2_var = device_outputs[i + 1]
             
+            # Create CPU versions of the outputs for comparison
+            device1_cpu_var = f"{device1_var}_cpu_compare"
+            device2_cpu_var = f"{device2_var}_cpu_compare"
+            
+            # Add statements to move tensors to CPU
+            device_statements.append(
+                ast.Assign(
+                    targets=[ast.Name(id=device1_cpu_var, ctx=ast.Store())],
+                    value=ast.Call(
+                        func=ast.Attribute(
+                            value=ast.Name(id=device1_var, ctx=ast.Load()),
+                            attr="to"
+                        ),
+                        args=[ast.Constant(value="cpu")],
+                        keywords=[]
+                    )
+                )
+            )
+            
+            device_statements.append(
+                ast.Assign(
+                    targets=[ast.Name(id=device2_cpu_var, ctx=ast.Store())],
+                    value=ast.Call(
+                        func=ast.Attribute(
+                            value=ast.Name(id=device2_var, ctx=ast.Load()),
+                            attr="to"
+                        ),
+                        args=[ast.Constant(value="cpu")],
+                        keywords=[]
+                    )
+                )
+            )
+            
+            # Compare the CPU versions
             comparison = self.build_assert_eq(
                 ast.Call(
                     func=ast.Attribute(
-                        value=ast.Name(id=device1_var, ctx=ast.Load()),
+                        value=ast.Name(id=device1_cpu_var, ctx=ast.Load()),
                         attr="allclose"
                     ),
                     args=[
-                        ast.Name(id=device2_var, ctx=ast.Load()),
+                        ast.Name(id=device2_cpu_var, ctx=ast.Load()),
                     ],
                     keywords=[
                         ast.keyword(arg="rtol", value=ast.Constant(value=1e-5)),
@@ -1018,8 +1053,7 @@ class ExtractInlineTest(ast.NodeTransformer):
         # Update the inline test object
         self.cur_inline_test.previous_stmts.extend(device_statements)
         self.cur_inline_test.check_stmts.extend(comparisons)
-
-    
+        
 
     
 
