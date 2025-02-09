@@ -934,9 +934,8 @@ class ExtractInlineTest(ast.NodeTransformer):
             raise MalformedException("inline test: invalid check_not_same(), expected 2 args")
     
     def parse_diff_test(self, node):
-  
         if not self.cur_inline_test.devices:
-            raise MalformedException("diff_test() can only be used with the 'devices' parameter.")
+            raise MalformedException("diff_test can only be used with the 'devices' parameter.")
 
         if len(node.args) != 1:
             raise MalformedException("diff_test() requires exactly 1 argument.")
@@ -957,16 +956,25 @@ class ExtractInlineTest(ast.NodeTransformer):
         device_statements = []
         device_outputs = []
 
-        # Generate device-specific tensors and operations
+        # Use the input tensor from the given statement
+        input_tensor = self.cur_inline_test.given_stmts[0].value # This is the actual input tensor
+        input_var = self.cur_inline_test.given_stmts[0].targets[0].id
+
+        # Store original input tensor to avoid regeneration
+        input_store = ast.Assign(
+            targets=[ast.Name(id=input_var, ctx=ast.Store())],
+            value=input_tensor
+        )
+        device_statements.append(input_store)
+
         for device in self.cur_inline_test.devices:
             # Create device-specific input tensor
-            input_var = self.cur_inline_test.given_stmts[0].targets[0].id
             device_input_var = f"{input_var}_{device}"
             device_input_stmt = ast.Assign(
                 targets=[ast.Name(id=device_input_var, ctx=ast.Store())],
                 value=ast.Call(
                     func=ast.Attribute(
-                        value=self.cur_inline_test.given_stmts[0].value,
+                        value=ast.Name(id=input_var, ctx=ast.Load()),  # Use stored input tensor
                         attr="to"
                     ),
                     args=[ast.Constant(value=device)],
@@ -974,6 +982,8 @@ class ExtractInlineTest(ast.NodeTransformer):
                 )
             )
             device_statements.append(device_input_stmt)
+
+        # Rest of your code remains the same...
 
             # Create device-specific operation result
             device_output_var = f"output_{device}"
@@ -1043,7 +1053,8 @@ class ExtractInlineTest(ast.NodeTransformer):
                     ],
                     keywords=[
                         ast.keyword(arg="rtol", value=ast.Constant(value=1e-5)),
-                        ast.keyword(arg="atol", value=ast.Constant(value=1e-5))
+                        ast.keyword(arg="atol", value=ast.Constant(value=1e-5)),
+                        ast.keyword(arg="equal_nan", value=ast.Constant(value=True))
                     ]
                 ),
                 ast.Constant(value=True)
