@@ -46,7 +46,7 @@ class itest:
         """
         return self
     
-    def check_differential_testing(self, outputs):
+    def diff_test(self, outputs):
         """
         Assert whether outputs are consistent across different devices.
         This method compares the outputs from different devices specified in the constructor.

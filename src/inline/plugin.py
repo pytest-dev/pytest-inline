@@ -295,7 +295,7 @@ class ExtractInlineTest(ast.NodeTransformer):
     arg_disabled_str = "disabled"
     arg_timeout_str = "timeout"
     arg_devices_str = "devices"
-    check_differential_testing_str = "check_differential_testing"
+    diff_test_str = "diff_test"
     assume = "assume"
     inline_module_imported = False
 
@@ -933,13 +933,13 @@ class ExtractInlineTest(ast.NodeTransformer):
         else:
             raise MalformedException("inline test: invalid check_not_same(), expected 2 args")
     
-    def parse_check_differential_testing(self, node):
+    def parse_diff_test(self, node):
   
         if not self.cur_inline_test.devices:
-            raise MalformedException("check_differential_testing can only be used with the 'devices' parameter.")
+            raise MalformedException("diff_test() can only be used with the 'devices' parameter.")
 
         if len(node.args) != 1:
-            raise MalformedException("check_differential_testing() requires exactly 1 argument.")
+            raise MalformedException("diff_test() requires exactly 1 argument.")
 
         # Parse the tensor operation
         output_node = self.parse_group(node.args[0])
@@ -952,7 +952,7 @@ class ExtractInlineTest(ast.NodeTransformer):
                 break
         
         if not original_op:
-            raise MalformedException("Could not find original operation for differential testing")
+            raise MalformedException("Could not find original operation for diff_test")
 
         device_statements = []
         device_outputs = []
@@ -1157,13 +1157,13 @@ class ExtractInlineTest(ast.NodeTransformer):
                 self.parse_check_same(call)
             elif call.func.attr == self.check_not_same:
                 self.parse_check_not_same(call)
-            elif call.func.attr == self.check_differential_testing_str:
-                self.parse_check_differential_testing(call)
+            elif call.func.attr == self.diff_test_str:
+                self.parse_diff_test(call)
             elif call.func.attr == self.fail_str:
                 self.parse_fail(call)
             elif call.func.attr == self.given_str:
                 raise MalformedException(
-                    f"inline test: given() must be called before check_eq()/check_true()/check_false()/check_differential_testing()"
+                    f"inline test: given() must be called before check_eq()/check_true()/check_false()/diff_test()"
                 )
             else:
                 raise MalformedException(f"inline test: invalid function call {self.node_to_source_code(call.func)}")
