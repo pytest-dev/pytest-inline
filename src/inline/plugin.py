@@ -940,10 +940,9 @@ class ExtractInlineTest(ast.NodeTransformer):
         if len(node.args) != 1:
             raise MalformedException("diff_test() requires exactly 1 argument.")
 
-        # Parse the tensor operation
         output_node = self.parse_group(node.args[0])
         
-        # Get the original operation from the previous statements
+        # Get the original operation
         original_op = None
         for stmt in self.cur_inline_test.previous_stmts:
             if isinstance(stmt, ast.Assign) and stmt.targets[0].id == output_node.id:
@@ -956,43 +955,48 @@ class ExtractInlineTest(ast.NodeTransformer):
         device_statements = []
         device_outputs = []
 
-        # Use the input tensor from the given statement
-        input_tensor = self.cur_inline_test.given_stmts[0].value # This is the actual input tensor
-        input_var = self.cur_inline_test.given_stmts[0].targets[0].id
-
-        # Store original input tensor to avoid regeneration
-        input_store = ast.Assign(
-            targets=[ast.Name(id=input_var, ctx=ast.Store())],
-            value=input_tensor
-        )
-        device_statements.append(input_store)
-
-        for device in self.cur_inline_test.devices:
-            # Create device-specific input tensor
-            device_input_var = f"{input_var}_{device}"
-            device_input_stmt = ast.Assign(
-                targets=[ast.Name(id=device_input_var, ctx=ast.Store())],
-                value=ast.Call(
-                    func=ast.Attribute(
-                        value=ast.Name(id=input_var, ctx=ast.Load()),  # Use stored input tensor
-                        attr="to"
-                    ),
-                    args=[ast.Constant(value=device)],
-                    keywords=[]
+        # Handle all input tensors from given statements
+        input_vars = []
+        for given_stmt in self.cur_inline_test.given_stmts:
+            input_vars.append(given_stmt.targets[0].id)
+            # Store original input
+            device_statements.append(
+                ast.Assign(
+                    targets=[ast.Name(id=given_stmt.targets[0].id, ctx=ast.Store())],
+                    value=given_stmt.value
                 )
             )
-            device_statements.append(device_input_stmt)
 
-        # Rest of your code remains the same...
+        # For each device, create device-specific versions of all input tensors
+        for device in self.cur_inline_test.devices:
+            device_input_vars = {}  # Map original var names to device-specific ones
+            
+            # Move each input tensor to the current device
+            for input_var in input_vars:
+                device_input_var = f"{input_var}_{device}"
+                device_input_vars[input_var] = device_input_var
+                
+                device_input_stmt = ast.Assign(
+                    targets=[ast.Name(id=device_input_var, ctx=ast.Store())],
+                    value=ast.Call(
+                        func=ast.Attribute(
+                            value=ast.Name(id=input_var, ctx=ast.Load()),
+                            attr="to"
+                        ),
+                        args=[ast.Constant(value=device)],
+                        keywords=[]
+                    )
+                )
+                device_statements.append(device_input_stmt)
 
-            # Create device-specific operation result
+            # Create device-specific operation
             device_output_var = f"output_{device}"
-            # Copy the original operation but replace the input tensor with device-specific one
             device_op = copy.deepcopy(original_op)
-            # Replace the input tensor reference in the operation
+            
+            # Replace all input tensor references with device-specific ones
             for node in ast.walk(device_op):
-                if isinstance(node, ast.Name) and node.id == input_var:
-                    node.id = device_input_var
+                if isinstance(node, ast.Name) and node.id in device_input_vars:
+                    node.id = device_input_vars[node.id]
 
             device_output_stmt = ast.Assign(
                 targets=[ast.Name(id=device_output_var, ctx=ast.Store())],
@@ -1001,18 +1005,16 @@ class ExtractInlineTest(ast.NodeTransformer):
             device_statements.append(device_output_stmt)
             device_outputs.append(device_output_var)
 
+        # Rest of the comparison code remains the same...
         # Add the comparison across devices
-        # Always convert tensors to CPU for comparison
         comparisons = []
         for i in range(len(device_outputs) - 1):
             device1_var = device_outputs[i]
             device2_var = device_outputs[i + 1]
             
-            # Create CPU versions of the outputs for comparison
             device1_cpu_var = f"{device1_var}_cpu_compare"
             device2_cpu_var = f"{device2_var}_cpu_compare"
             
-            # Add statements to move tensors to CPU
             device_statements.append(
                 ast.Assign(
                     targets=[ast.Name(id=device1_cpu_var, ctx=ast.Store())],
@@ -1041,7 +1043,6 @@ class ExtractInlineTest(ast.NodeTransformer):
                 )
             )
             
-            # Compare the CPU versions
             comparison = self.build_assert_eq(
                 ast.Call(
                     func=ast.Attribute(
@@ -1061,7 +1062,6 @@ class ExtractInlineTest(ast.NodeTransformer):
             )
             comparisons.append(comparison)
 
-        # Update the inline test object
         self.cur_inline_test.previous_stmts.extend(device_statements)
         self.cur_inline_test.check_stmts.extend(comparisons)
         
