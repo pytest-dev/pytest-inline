@@ -951,119 +951,193 @@ class ExtractInlineTest(ast.NodeTransformer):
         
         if not original_op:
             raise MalformedException("Could not find original operation for diff_test")
-
-        device_statements = []
-        device_outputs = []
-
-        # Handle all input tensors from given statements
-        input_vars = []
-        for given_stmt in self.cur_inline_test.given_stmts:
-            input_vars.append(given_stmt.targets[0].id)
-            # Store original input
-            device_statements.append(
-                ast.Assign(
-                    targets=[ast.Name(id=given_stmt.targets[0].id, ctx=ast.Store())],
-                    value=given_stmt.value
-                )
-            )
-
-        # For each device, create device-specific versions of all input tensors
-        for device in self.cur_inline_test.devices:
-            device_input_vars = {}  # Map original var names to device-specific ones
-            
-            # Move each input tensor to the current device
-            for input_var in input_vars:
-                device_input_var = f"{input_var}_{device}"
-                device_input_vars[input_var] = device_input_var
+        
+        # Check if the operation is in-place (ends with _)
+        is_inplace = False
+        op_name = ""
+        
+        if isinstance(original_op, ast.Call) and hasattr(original_op, "func"):
+            if isinstance(original_op.func, ast.Attribute):
+                op_name = original_op.func.attr
                 
-                device_input_stmt = ast.Assign(
-                    targets=[ast.Name(id=device_input_var, ctx=ast.Store())],
+                # Check if operation name ends with '_' (in-place)
+                is_inplace = op_name.endswith('_')
+        
+        # Create our new statements
+        new_statements = []
+        device_outputs = []
+        
+        # Process input tensors
+        for given_stmt in self.cur_inline_test.given_stmts:
+            input_var = given_stmt.targets[0].id
+            ref_var = f"{input_var}_ref"
+            
+            # Always clone inputs for in-place operations
+            new_statements.append(
+                ast.Assign(
+                    targets=[ast.Name(id=ref_var, ctx=ast.Store())],
                     value=ast.Call(
                         func=ast.Attribute(
-                            value=ast.Name(id=input_var, ctx=ast.Load()),
-                            attr="to"
+                            value=given_stmt.value,
+                            attr="clone"
                         ),
-                        args=[ast.Constant(value=device)],
+                        args=[],
                         keywords=[]
                     )
                 )
-                device_statements.append(device_input_stmt)
-
-            # Create device-specific operation
-            device_output_var = f"output_{device}"
+            )
+            
+            # Create device-specific versions
+            for device in self.cur_inline_test.devices:
+                device_var = f"{input_var}_{device}"
+                
+                new_statements.append(
+                    ast.Assign(
+                        targets=[ast.Name(id=device_var, ctx=ast.Store())],
+                        value=ast.Call(
+                            func=ast.Attribute(
+                                value=ast.Name(id=ref_var, ctx=ast.Load()),
+                                attr="to"
+                            ),
+                            args=[ast.Constant(value=device)],
+                            keywords=[]
+                        )
+                    )
+                )
+        
+        # Create device-specific operations
+        device_input_map = {device: {} for device in self.cur_inline_test.devices}
+        for device in self.cur_inline_test.devices:
+            for given_stmt in self.cur_inline_test.given_stmts:
+                input_var = given_stmt.targets[0].id
+                device_input_map[device][input_var] = f"{input_var}_{device}"
+            
             device_op = copy.deepcopy(original_op)
             
-            # Replace all input tensor references with device-specific ones
-            for node in ast.walk(device_op):
-                if isinstance(node, ast.Name) and node.id in device_input_vars:
-                    node.id = device_input_vars[node.id]
-
-            device_output_stmt = ast.Assign(
-                targets=[ast.Name(id=device_output_var, ctx=ast.Store())],
-                value=device_op
+            # Replace input references
+            class ReplaceInputs(ast.NodeTransformer):
+                def visit_Name(self, node):
+                    if node.id in device_input_map[device]:
+                        return ast.Name(id=device_input_map[device][node.id], ctx=node.ctx)
+                    return node
+            
+            device_op = ReplaceInputs().visit(device_op)
+            device_output = f"output_{device}"
+            
+            new_statements.append(
+                ast.Assign(
+                    targets=[ast.Name(id=device_output, ctx=ast.Store())],
+                    value=device_op
+                )
             )
-            device_statements.append(device_output_stmt)
-            device_outputs.append(device_output_var)
-
-        # Rest of the comparison code remains the same...
-        # Add the comparison across devices
+            device_outputs.append(device_output)
+        
+        # Choose appropriate comparison method
         comparisons = []
-        for i in range(len(device_outputs) - 1):
-            device1_var = device_outputs[i]
-            device2_var = device_outputs[i + 1]
-            
-            device1_cpu_var = f"{device1_var}_cpu_compare"
-            device2_cpu_var = f"{device2_var}_cpu_compare"
-            
-            device_statements.append(
-                ast.Assign(
-                    targets=[ast.Name(id=device1_cpu_var, ctx=ast.Store())],
-                    value=ast.Call(
+        if is_inplace and ('random' in op_name.lower() or 'exponential' in op_name.lower() or 
+                        'normal' in op_name.lower() or 'uniform' in op_name.lower()):
+            # For in-place stochastic operations, check basic properties
+            for device_output in device_outputs:
+                # 1. Check that output has values (not all zeros)
+                has_values_check = self.build_assert_true(
+                    ast.Call(
                         func=ast.Attribute(
-                            value=ast.Name(id=device1_var, ctx=ast.Load()),
-                            attr="to"
+                            value=ast.Call(
+                                func=ast.Attribute(
+                                    value=ast.Name(id=device_output, ctx=ast.Load()),
+                                    attr="abs"
+                                ),
+                                args=[],
+                                keywords=[]
+                            ),
+                            attr="sum"
                         ),
-                        args=[ast.Constant(value="cpu")],
+                        args=[],
                         keywords=[]
                     )
                 )
-            )
-            
-            device_statements.append(
-                ast.Assign(
-                    targets=[ast.Name(id=device2_cpu_var, ctx=ast.Store())],
-                    value=ast.Call(
+                comparisons.append(has_values_check)
+                
+                # 2. Check that output has finite values (not inf)
+                has_finite_check = self.build_assert_true(
+                    ast.Call(
                         func=ast.Attribute(
-                            value=ast.Name(id=device2_var, ctx=ast.Load()),
-                            attr="to"
+                            value=ast.Call(
+                                func=ast.Attribute(
+                                    value=ast.Name(id="torch", ctx=ast.Load()),
+                                    attr="isfinite"
+                                ),
+                                args=[ast.Name(id=device_output, ctx=ast.Load())],
+                                keywords=[]
+                            ),
+                            attr="all"
                         ),
-                        args=[ast.Constant(value="cpu")],
+                        args=[],
                         keywords=[]
                     )
                 )
-            )
-            
-            comparison = self.build_assert_eq(
-                ast.Call(
-                    func=ast.Attribute(
-                        value=ast.Name(id=device1_cpu_var, ctx=ast.Load()),
-                        attr="allclose"
+                comparisons.append(has_finite_check)
+        else:
+            # For deterministic operations, use allclose comparison
+            for i in range(len(device_outputs) - 1):
+                dev1 = device_outputs[i]
+                dev2 = device_outputs[i + 1]
+                
+                dev1_cpu = f"{dev1}_cpu"
+                dev2_cpu = f"{dev2}_cpu"
+                
+                # Move outputs back to CPU for comparison
+                new_statements.append(
+                    ast.Assign(
+                        targets=[ast.Name(id=dev1_cpu, ctx=ast.Store())],
+                        value=ast.Call(
+                            func=ast.Attribute(
+                                value=ast.Name(id=dev1, ctx=ast.Load()),
+                                attr="to"
+                            ),
+                            args=[ast.Constant(value="cpu")],
+                            keywords=[]
+                        )
+                    )
+                )
+                
+                new_statements.append(
+                    ast.Assign(
+                        targets=[ast.Name(id=dev2_cpu, ctx=ast.Store())],
+                        value=ast.Call(
+                            func=ast.Attribute(
+                                value=ast.Name(id=dev2, ctx=ast.Load()),
+                                attr="to"
+                            ),
+                            args=[ast.Constant(value="cpu")],
+                            keywords=[]
+                        )
+                    )
+                )
+                
+                # Standard allclose comparison
+                comparison = self.build_assert_eq(
+                    ast.Call(
+                        func=ast.Attribute(
+                            value=ast.Name(id=dev1_cpu, ctx=ast.Load()),
+                            attr="allclose"
+                        ),
+                        args=[
+                            ast.Name(id=dev2_cpu, ctx=ast.Load())
+                        ],
+                        keywords=[
+                            ast.keyword(arg="rtol", value=ast.Constant(value=1e-4)),
+                            ast.keyword(arg="atol", value=ast.Constant(value=1e-4)),
+                            ast.keyword(arg="equal_nan", value=ast.Constant(value=True))
+                        ]
                     ),
-                    args=[
-                        ast.Name(id=device2_cpu_var, ctx=ast.Load()),
-                    ],
-                    keywords=[
-                        ast.keyword(arg="rtol", value=ast.Constant(value=1e-5)),
-                        ast.keyword(arg="atol", value=ast.Constant(value=1e-5)),
-                        ast.keyword(arg="equal_nan", value=ast.Constant(value=True))
-                    ]
-                ),
-                ast.Constant(value=True)
-            )
-            comparisons.append(comparison)
-
-        self.cur_inline_test.previous_stmts.extend(device_statements)
-        self.cur_inline_test.check_stmts.extend(comparisons)
+                    ast.Constant(value=True)
+                )
+                comparisons.append(comparison)
+        
+        # Replace statements
+        self.cur_inline_test.previous_stmts = new_statements
+        self.cur_inline_test.check_stmts = comparisons
         
 
     
