@@ -952,92 +952,70 @@ class ExtractInlineTest(ast.NodeTransformer):
         if not original_op:
             raise MalformedException("Could not find original operation for diff_test")
         
-        # Check if the operation is stochastic
-        is_stochastic = False
-        op_name = ""
-        
-        if isinstance(original_op, ast.Call) and hasattr(original_op, "func"):
-            if isinstance(original_op.func, ast.Attribute):
-                op_name = original_op.func.attr
-                
-                # Check if operation name indicates a stochastic operation
-                stochastic_keywords = ['sample', 'random', 'exponential', 'normal', 'uniform', 'multinomial', 'dropout']
-                is_stochastic = any(keyword in op_name.lower() for keyword in stochastic_keywords)
-        
         # Create our new statements
         new_statements = []
         device_outputs = []
         
-        # Import necessary modules for seed setting
-        if is_stochastic:
-            # Import needed modules
-            import_random = ast.ImportFrom(
-                module='random',
-                names=[ast.alias(name='seed', asname=None)],
-                level=0
-            )
-            new_statements.append(import_random)
-            
-            import_np = ast.ImportFrom(
-                module='numpy',
-                names=[ast.alias(name='random', asname='np_random')],
-                level=0
-            )
-            new_statements.append(import_np)
-            
-            # Create seed function
-            seed_func_def = ast.FunctionDef(
-                name='set_random_seed',
-                args=ast.arguments(
-                    posonlyargs=[],
-                    args=[ast.arg(arg='seed_value', annotation=None)],
-                    kwonlyargs=[],
-                    kw_defaults=[],
-                    defaults=[]
-                ),
-                body=[
-                    ast.Expr(
-                        value=ast.Call(
-                            func=ast.Name(id='seed', ctx=ast.Load()),
-                            args=[ast.Name(id='seed_value', ctx=ast.Load())],
-                            keywords=[]
-                        )
-                    ),
-                    ast.Expr(
-                        value=ast.Call(
-                            func=ast.Attribute(
-                                value=ast.Attribute(
-                                    value=ast.Name(id='torch', ctx=ast.Load()),
-                                    attr='manual_seed',
-                                    ctx=ast.Load()
-                                ),
-                                attr='__call__',
-                                ctx=ast.Load()
-                            ),
-                            args=[ast.Name(id='seed_value', ctx=ast.Load())],
-                            keywords=[]
-                        )
-                    ),
-                    ast.Expr(
-                        value=ast.Call(
-                            func=ast.Attribute(
-                                value=ast.Attribute(
-                                    value=ast.Name(id='np_random', ctx=ast.Load()),
-                                    attr='seed',
-                                    ctx=ast.Load()
-                                ),
-                                attr='__call__',
-                                ctx=ast.Load()
-                            ),
-                            args=[ast.Name(id='seed_value', ctx=ast.Load())],
-                            keywords=[]
-                        )
+        # Import necessary modules for seed setting - Always add these
+        # Import random module
+        import_random = ast.ImportFrom(
+            module='random',
+            names=[ast.alias(name='seed', asname=None)],
+            level=0
+        )
+        new_statements.append(import_random)
+        
+        # Import numpy.random
+        import_np = ast.ImportFrom(
+            module='numpy',
+            names=[ast.alias(name='random', asname='np_random')],
+            level=0
+        )
+        new_statements.append(import_np)
+        
+        # Create seed function - Always add this
+        seed_func_def = ast.FunctionDef(
+            name='set_random_seed',
+            args=ast.arguments(
+                posonlyargs=[],
+                args=[ast.arg(arg='seed_value', annotation=None)],
+                kwonlyargs=[],
+                kw_defaults=[],
+                defaults=[]
+            ),
+            body=[
+                ast.Expr(
+                    value=ast.Call(
+                        func=ast.Name(id='seed', ctx=ast.Load()),
+                        args=[ast.Name(id='seed_value', ctx=ast.Load())],
+                        keywords=[]
                     )
-                ],
-                decorator_list=[],
-                returns=None
-            )
-            new_statements.append(seed_func_def)
+                ),
+                ast.Expr(
+                    value=ast.Call(
+                        func=ast.Attribute(
+                            value=ast.Name(id='torch', ctx=ast.Load()),
+                            attr='manual_seed'
+                        ),
+                        args=[ast.Name(id='seed_value', ctx=ast.Load())],
+                        keywords=[]
+                    )
+                ),
+                ast.Expr(
+                    value=ast.Call(
+                        func=ast.Attribute(
+                            value=ast.Name(id='np_random', ctx=ast.Load()),
+                            attr='seed'
+                        ),
+                        args=[ast.Name(id='seed_value', ctx=ast.Load())],
+                        keywords=[]
+                    )
+                )
+            ],
+            decorator_list=[],
+            returns=None
+        )
+        new_statements.append(seed_func_def)
 
         # Process input tensors
         for given_stmt in self.cur_inline_test.given_stmts:
@@ -1084,17 +1062,16 @@ class ExtractInlineTest(ast.NodeTransformer):
                 input_var = given_stmt.targets[0].id
                 device_input_map[device][input_var] = f"{input_var}_{device}"
             
-            # Set same seed before each device operation if stochastic
-            if is_stochastic:
-                new_statements.append(
-                    ast.Expr(
-                        value=ast.Call(
-                            func=ast.Name(id='set_random_seed', ctx=ast.Load()),
-                            args=[ast.Constant(value=42)],  # Use constant seed 42
-                            keywords=[]
-                        )
+            # Always set seed before each device operation - no condition check
+            new_statements.append(
+                ast.Expr(
+                    value=ast.Call(
+                        func=ast.Name(id='set_random_seed', ctx=ast.Load()),
+                        args=[ast.Constant(value=42)],  # Use constant seed 42
+                        keywords=[]
                     )
                 )
+            )
                 
             device_op = copy.deepcopy(original_op)
             
@@ -1116,122 +1093,63 @@ class ExtractInlineTest(ast.NodeTransformer):
             )
             device_outputs.append(device_output)
         
-        # Choose appropriate comparison method
+        # Standard comparison method for all operations - no condition check
         comparisons = []
-        if is_stochastic:
-            # For stochastic operations, use standard comparison
-            for i in range(len(device_outputs) - 1):
-                dev1 = device_outputs[i]
-                dev2 = device_outputs[i + 1]
-                
-                dev1_cpu = f"{dev1}_cpu"
-                dev2_cpu = f"{dev2}_cpu"
-                
-                # Move outputs back to CPU for comparison
-                new_statements.append(
-                    ast.Assign(
-                        targets=[ast.Name(id=dev1_cpu, ctx=ast.Store())],
-                        value=ast.Call(
-                            func=ast.Attribute(
-                                value=ast.Name(id=dev1, ctx=ast.Load()),
-                                attr="to"
-                            ),
-                            args=[ast.Constant(value="cpu")],
-                            keywords=[]
-                        )
-                    )
-                )
-                
-                new_statements.append(
-                    ast.Assign(
-                        targets=[ast.Name(id=dev2_cpu, ctx=ast.Store())],
-                        value=ast.Call(
-                            func=ast.Attribute(
-                                value=ast.Name(id=dev2, ctx=ast.Load()),
-                                attr="to"
-                            ),
-                            args=[ast.Constant(value="cpu")],
-                            keywords=[]
-                        )
-                    )
-                )
-                
-                # Standard allclose comparison
-                comparison = self.build_assert_eq(
-                    ast.Call(
+        for i in range(len(device_outputs) - 1):
+            dev1 = device_outputs[i]
+            dev2 = device_outputs[i + 1]
+            
+            dev1_cpu = f"{dev1}_cpu"
+            dev2_cpu = f"{dev2}_cpu"
+            
+            # Move outputs back to CPU for comparison
+            new_statements.append(
+                ast.Assign(
+                    targets=[ast.Name(id=dev1_cpu, ctx=ast.Store())],
+                    value=ast.Call(
                         func=ast.Attribute(
-                            value=ast.Name(id=dev1_cpu, ctx=ast.Load()),
-                            attr="allclose"
+                            value=ast.Name(id=dev1, ctx=ast.Load()),
+                            attr="to"
                         ),
-                        args=[
-                            ast.Name(id=dev2_cpu, ctx=ast.Load())
-                        ],
-                        keywords=[
-                            ast.keyword(arg="rtol", value=ast.Constant(value=1e-4)),
-                            ast.keyword(arg="atol", value=ast.Constant(value=1e-4)),
-                            ast.keyword(arg="equal_nan", value=ast.Constant(value=True))
-                        ]
-                    ),
-                    ast.Constant(value=True)
-                )
-                comparisons.append(comparison)
-        else:
-            # For deterministic operations, use standard comparison
-            for i in range(len(device_outputs) - 1):
-                dev1 = device_outputs[i]
-                dev2 = device_outputs[i + 1]
-                
-                dev1_cpu = f"{dev1}_cpu"
-                dev2_cpu = f"{dev2}_cpu"
-                
-                # Move outputs back to CPU for comparison
-                new_statements.append(
-                    ast.Assign(
-                        targets=[ast.Name(id=dev1_cpu, ctx=ast.Store())],
-                        value=ast.Call(
-                            func=ast.Attribute(
-                                value=ast.Name(id=dev1, ctx=ast.Load()),
-                                attr="to"
-                            ),
-                            args=[ast.Constant(value="cpu")],
-                            keywords=[]
-                        )
+                        args=[ast.Constant(value="cpu")],
+                        keywords=[]
                     )
                 )
-                
-                new_statements.append(
-                    ast.Assign(
-                        targets=[ast.Name(id=dev2_cpu, ctx=ast.Store())],
-                        value=ast.Call(
-                            func=ast.Attribute(
-                                value=ast.Name(id=dev2, ctx=ast.Load()),
-                                attr="to"
-                            ),
-                            args=[ast.Constant(value="cpu")],
-                            keywords=[]
-                        )
-                    )
-                )
-                
-                # Standard allclose comparison
-                comparison = self.build_assert_eq(
-                    ast.Call(
+            )
+            
+            new_statements.append(
+                ast.Assign(
+                    targets=[ast.Name(id=dev2_cpu, ctx=ast.Store())],
+                    value=ast.Call(
                         func=ast.Attribute(
-                            value=ast.Name(id=dev1_cpu, ctx=ast.Load()),
-                            attr="allclose"
+                            value=ast.Name(id=dev2, ctx=ast.Load()),
+                            attr="to"
                         ),
-                        args=[
-                            ast.Name(id=dev2_cpu, ctx=ast.Load())
-                        ],
-                        keywords=[
-                            ast.keyword(arg="rtol", value=ast.Constant(value=1e-4)),
-                            ast.keyword(arg="atol", value=ast.Constant(value=1e-4)),
-                            ast.keyword(arg="equal_nan", value=ast.Constant(value=True))
-                        ]
-                    ),
-                    ast.Constant(value=True)
+                        args=[ast.Constant(value="cpu")],
+                        keywords=[]
+                    )
                 )
-                comparisons.append(comparison)
+            )
+            
+            # Standard allclose comparison
+            comparison = self.build_assert_eq(
+                ast.Call(
+                    func=ast.Attribute(
+                        value=ast.Name(id=dev1_cpu, ctx=ast.Load()),
+                        attr="allclose"
+                    ),
+                    args=[
+                        ast.Name(id=dev2_cpu, ctx=ast.Load())
+                    ],
+                    keywords=[
+                        ast.keyword(arg="rtol", value=ast.Constant(value=1e-4)),
+                        ast.keyword(arg="atol", value=ast.Constant(value=1e-4)),
+                        ast.keyword(arg="equal_nan", value=ast.Constant(value=True))
+                    ]
+                ),
+                ast.Constant(value=True)
+            )
+            comparisons.append(comparison)
         
         # Replace statements
         self.cur_inline_test.previous_stmts = new_statements
