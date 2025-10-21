@@ -365,6 +365,16 @@ class ExtractInlineTest(ast.NodeTransformer):
         """
         Parse a constructor call.
         """
+        
+        # Argument Order:
+        # 0) test_name (str)
+        # 1) parameterized (bool)
+        # 2) repeated (positive integer)
+        # 3) tag (str)
+        # 4) disabled (bool)
+        # 5) timeout (positive float)
+        # 6) devices (str array)
+        
         NUM_OF_ARGUMENTS = 7
         if len(node.args) + len(node.keywords) <= NUM_OF_ARGUMENTS:
             # positional arguments
@@ -589,6 +599,7 @@ class ExtractInlineTest(ast.NodeTransformer):
                         )
         else:
             raise MalformedException(f"inline test: invalid {self.class_name_str}(), expected at most 3 args")
+
 
         if not self.cur_inline_test.test_name:
             # by default, use lineno as test name
