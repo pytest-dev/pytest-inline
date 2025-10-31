@@ -252,7 +252,7 @@ class TimeoutException(Exception):
 ## InlineTest Parser
 ######################################################################
 class InlinetestParser:
-    def parse(self, obj, globs: None):
+    def parse(self, obj, globs: None):       
         # obj = open(self.file_path, "r").read():
         if isinstance(obj, ModuleType):
             tree = ast.parse(open(obj.__file__, "r").read())
@@ -302,6 +302,7 @@ class ExtractInlineTest(ast.NodeTransformer):
     def __init__(self):
         self.cur_inline_test = InlineTest()
         self.inline_test_list = []
+        self.import_list = []
 
     def is_inline_test_class(self, node):
         if isinstance(node, ast.Call):
@@ -360,6 +361,13 @@ class ExtractInlineTest(ast.NodeTransformer):
         elif isinstance(node, ast.Call):
             inline_test_calls.append(node)
             self.collect_inline_test_calls(node.func, inline_test_calls)
+
+    def collect_import_calls(self, node, import_calls: List[ast.FunctionDef]):
+        """
+        collect all import calls in the node (should be done first)
+        """
+        
+        pass
 
     def parse_constructor(self, node):
         """
@@ -1166,7 +1174,14 @@ class ExtractInlineTest(ast.NodeTransformer):
         self.cur_inline_test.previous_stmts = new_statements
         self.cur_inline_test.check_stmts = comparisons
         
-
+    def parse_import(self, node):
+        # Differentiate between import, from import, and import alias
+        import_node = ast.Import(
+            names=[
+                ast.alias(name=node)
+            ]
+        )
+        return import_node
     
 
     def build_fail(self):
@@ -1208,6 +1223,7 @@ class ExtractInlineTest(ast.NodeTransformer):
             return stmt
         else:
             return node
+            
 
     def parse_parameterized_test(self):
         for index, parameterized_test in enumerate(self.cur_inline_test.parameterized_inline_tests):
@@ -1217,8 +1233,13 @@ class ExtractInlineTest(ast.NodeTransformer):
             parameterized_test.test_name = self.cur_inline_test.test_name + "_" + str(index)
 
     def parse_inline_test(self, node):
+        import_calls = []
         inline_test_calls = []
+        
         self.collect_inline_test_calls(node, inline_test_calls)
+        self.collect_import_calls(node, import_calls)
+        
+        #Why reverse?
         inline_test_calls.reverse()
 
         if len(inline_test_calls) <= 1:
@@ -1309,6 +1330,7 @@ class ExtractInlineTest(ast.NodeTransformer):
 ## InlineTest Finder
 ######################################################################
 class InlineTestFinder:
+    # Finder should NOT store any global variables
     def __init__(self, parser=InlinetestParser(), recurse=True, exclude_empty=True):
         self._parser = parser
         self._recurse = recurse
@@ -1353,7 +1375,14 @@ class InlineTestFinder:
             pass
         return inspect.isroutine(maybe_routine)
 
-    def find(self, obj, module=None, globs=None, extraglobs=None):
+    # def find_imports(self, obj, module=None):
+    #     if module is False:
+    #         module = None
+    #     elif module is None:
+    #         module = inspect.getmodule(obj)
+        
+
+    def find(self, obj, module=None, globs=None, extraglobs=None, imports=None):
         # Find the module that contains the given object (if obj is
         # a module, then module=obj.).
         if module is False:
@@ -1374,15 +1403,23 @@ class InlineTestFinder:
         if "__name__" not in globs:
             globs["__name__"] = "__main__"  # provide a default module name
 
+        # Find intersection between loaded modules and module imports
+        if imports is None:
+            imports = set(sys.modules) & set(globs)
+        else:
+            imports = imports.copy()
+
         # Recursively explore `obj`, extracting InlineTests.
         tests = []
-        self._find(tests, obj, module, globs, {})
+        self._find(tests, obj, module, globs, imports, {})
         return tests
 
-    def _find(self, tests, obj, module, globs, seen):
+    def _find(self, tests, obj, module, globs, imports, seen):
         if id(obj) in seen:
             return
         seen[id(obj)] = 1
+        
+        
         # Find a test for this object, and add it to the list of tests.
         test = self._parser.parse(obj, globs)
         if test is not None:
@@ -1554,6 +1591,10 @@ class InlinetestModule(pytest.Module):
 
         group_tags = self.config.getoption("inlinetest_group", default=None)
         order_tags = self.config.getoption("inlinetest_order", default=None)
+
+        # TODO: import all modules through the finder first before extracting inline tests
+        # - Create ast for all imports
+        # - If a function references an import, then include the imported library reference in the ast
 
         for test_list in finder.find(module):
             # reorder the list if there are tests to be ordered

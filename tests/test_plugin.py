@@ -2,6 +2,9 @@ from inline.plugin import InlinetestItem, MalformedException, TimeoutException
 from _pytest.pytester import Pytester
 import pytest
 
+if __name__ == "__main__":
+    pytest.main(['-v', '-s']) 
+
 
 # pytest -p pytester
 class TestInlinetests:
