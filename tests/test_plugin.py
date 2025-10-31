@@ -8,6 +8,22 @@ if __name__ == "__main__":
 
 # pytest -p pytester
 class TestInlinetests:
+    def test_inline_detects_imports(self, pytester: Pytester):
+        checkfile = pytester.makepyfile(
+            """ 
+        from inline import itest
+        import numpy as np
+        import scipy
+        
+        def m(a):
+            a = a + 1
+            itest().given(a, 1).check_eq(a, 2)
+    """
+        )
+        for x in (pytester.path, checkfile):
+            items, reprec = pytester.inline_genitems(x)
+            assert len(items) == 0
+
     def test_inline_parser(self, pytester: Pytester):
         checkfile = pytester.makepyfile(
             """ 
@@ -33,6 +49,7 @@ class TestInlinetests:
         for x in (pytester.path, checkfile):
             items, reprec = pytester.inline_genitems(x)
             assert len(items) == 0
+
 
     def test_inline_malformed_given(self, pytester: Pytester):
         checkfile = pytester.makepyfile(

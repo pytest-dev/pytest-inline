@@ -159,6 +159,7 @@ class InlineTest:
         self.check_stmts = []
         self.given_stmts = []
         self.previous_stmts = []
+        self.import_stmts = []
         self.prev_stmt_type = PrevStmtType.StmtExpr
         # the line number of test statement
         self.lineno = 0
@@ -297,6 +298,11 @@ class ExtractInlineTest(ast.NodeTransformer):
     arg_devices_str = "devices"
     diff_test_str = "diff_test"
     assume = "assume"
+    
+    import_str = "import"
+    from_str = "from"
+    as_str = "as"
+    
     inline_module_imported = False
 
     def __init__(self):
@@ -352,22 +358,38 @@ class ExtractInlineTest(ast.NodeTransformer):
                     return prev_stmt_node
             return self.find_condition_stmt(prev_stmt_node)
 
-    def collect_inline_test_calls(self, node, inline_test_calls: List[ast.Call]):
+    def collect_inline_test_calls(self, node, inline_test_calls: List[ast.Call], import_calls: List[ast.Import], import_from_calls: List[ast.ImportFrom]):
         """
         collect all function calls in the node
         """
         if isinstance(node, ast.Attribute):
-            self.collect_inline_test_calls(node.value, inline_test_calls)
+            self.collect_inline_test_calls(node.value, inline_test_calls, import_calls, import_from_calls)
         elif isinstance(node, ast.Call):
             inline_test_calls.append(node)
-            self.collect_inline_test_calls(node.func, inline_test_calls)
+            self.collect_inline_test_calls(node.func, inline_test_calls, import_calls, import_from_calls)
+        elif isinstance(node, ast.Import):
+            import_calls.append(node)
+            self.collect_inline_test_calls(node.func, inline_test_calls, import_calls, import_from_calls)
+        elif isinstance(node, ast.ImportFrom):
+            import_from_calls.append(node)
+            self.collect_inline_test_calls(node.func, inline_test_calls, import_calls, import_from_calls)
 
-    def collect_import_calls(self, node, import_calls: List[ast.FunctionDef]):
+    def collect_import_calls(self, node, import_calls: List[ast.Import], import_from_calls: List[ast.ImportFrom]):
         """
         collect all import calls in the node (should be done first)
         """
-        
-        pass
+
+        while not isinstance(node, ast.Module) and node.parent != None:
+            node = node.parent
+       
+        if not isinstance(node, ast.Module):
+            return
+            
+        for child in node.children:
+            if isinstance(child, ast.Import):
+                import_calls.append(child)
+            elif isinstance(child, ast.ImportFrom):
+                import_from_calls.append(child)
 
     def parse_constructor(self, node):
         """
@@ -1175,7 +1197,7 @@ class ExtractInlineTest(ast.NodeTransformer):
         self.cur_inline_test.check_stmts = comparisons
         
     def parse_import(self, node):
-        # Differentiate between import, from import, and import alias
+        # TODO: Differentiate between import, from import, and import alias
         import_node = ast.Import(
             names=[
                 ast.alias(name=node)
@@ -1183,6 +1205,8 @@ class ExtractInlineTest(ast.NodeTransformer):
         )
         return import_node
     
+    def parse_import_from(self, node):
+        pass
 
     def build_fail(self):
         equal_node = ast.Compare(
@@ -1234,12 +1258,12 @@ class ExtractInlineTest(ast.NodeTransformer):
 
     def parse_inline_test(self, node):
         import_calls = []
-        inline_test_calls = []
+        import_from_calls = []
+        inline_test_calls = [] 
         
-        self.collect_inline_test_calls(node, inline_test_calls)
-        self.collect_import_calls(node, import_calls)
+        self.collect_inline_test_calls(node, inline_test_calls, import_calls, import_from_calls)
+        self.collect_import_calls(node, import_calls, import_from_calls)
         
-        #Why reverse?
         inline_test_calls.reverse()
 
         if len(inline_test_calls) <= 1:
@@ -1267,6 +1291,12 @@ class ExtractInlineTest(ast.NodeTransformer):
                 inline_test_call_index += 1
             else:
                 break
+
+        for import_stmt in import_calls:
+            self.cur_inline_test.import_stmts.append(import_stmt)
+        for import_stmt in import_from_calls:
+            self.cur_inline_test.import_stmts.append(import_stmt)
+
 
         # "check_eq" or "check_true" or "check_false" or "check_neq"
         for call in inline_test_calls[inline_test_call_index:]:
@@ -1404,10 +1434,10 @@ class InlineTestFinder:
             globs["__name__"] = "__main__"  # provide a default module name
 
         # Find intersection between loaded modules and module imports
-        if imports is None:
-            imports = set(sys.modules) & set(globs)
-        else:
-            imports = imports.copy()
+        # if imports is None:
+        #     imports = set(sys.modules) & set(globs)
+        # else:
+        #     imports = imports.copy()
 
         # Recursively explore `obj`, extracting InlineTests.
         tests = []
@@ -1431,7 +1461,7 @@ class InlineTestFinder:
 
                 # Recurse to functions & classes.
                 if (self._is_routine(val) or inspect.isclass(val)) and self._from_module(module, val):
-                    self._find(tests, val, module, globs, seen)
+                    self._find(tests, val, module, globs, imports, seen)
 
         # Look for tests in a class's contained objects.
         if inspect.isclass(obj) and self._recurse:
@@ -1445,7 +1475,7 @@ class InlineTestFinder:
                     module, val
                 ):
                     valname = "%s" % (valname)
-                    self._find(tests, val, module, globs, seen)
+                    self._find(tests, val, module, globs, imports, seen)
 
 
 ######################################################################
