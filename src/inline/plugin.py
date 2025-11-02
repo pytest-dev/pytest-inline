@@ -175,11 +175,23 @@ class InlineTest:
         self.devices = None
         self.globs = {}
 
+    def write_imports(self):
+        import_str = ""
+        for n in self.import_stmts:
+              import_str += ExtractInlineTest.node_to_source_code(n) + "\n"
+        return import_str
+
     def to_test(self):
+        prefix = "\n"
+        
+        # for n in self.import_stmts:
+        #     import_str += ExtractInlineTest.node_to_source_code(n) + "\n"
+        
+        
         if self.prev_stmt_type == PrevStmtType.CondExpr:
             if self.assume_stmts == []:
-                return "\n".join(
-                    [ExtractInlineTest.node_to_source_code(n) for n in self.given_stmts]
+                return prefix.join(
+                    + [ExtractInlineTest.node_to_source_code(n) for n in self.given_stmts]
                     + [ExtractInlineTest.node_to_source_code(n) for n in self.check_stmts]
                 )
             else:
@@ -188,11 +200,11 @@ class InlineTest:
                 )
                 assume_statement = self.assume_stmts[0]
                 assume_node = self.build_assume_node(assume_statement, body_nodes)
-                return "\n".join(ExtractInlineTest.node_to_source_code(assume_node))
+                return prefix.join(ExtractInlineTest.node_to_source_code(assume_node))
 
         else:
             if self.assume_stmts is None or self.assume_stmts == []:
-                return "\n".join(
+                return prefix.join(
                     [ExtractInlineTest.node_to_source_code(n) for n in self.given_stmts]
                     + [ExtractInlineTest.node_to_source_code(n) for n in self.previous_stmts]
                     + [ExtractInlineTest.node_to_source_code(n) for n in self.check_stmts]
@@ -203,7 +215,7 @@ class InlineTest:
                 )
                 assume_statement = self.assume_stmts[0]
                 assume_node = self.build_assume_node(assume_statement, body_nodes)
-                return "\n".join([ExtractInlineTest.node_to_source_code(assume_node)])
+                return prefix.join([ExtractInlineTest.node_to_source_code(assume_node)])
 
     def build_assume_node(self, assumption_node, body_nodes):
         return ast.If(assumption_node, body_nodes, [])
@@ -1483,9 +1495,10 @@ class InlineTestFinder:
 ######################################################################
 class InlineTestRunner:
     def run(self, test: InlineTest, out: List) -> None:
-        test_str = test.to_test()
+        test_str = test.write_imports()
+        test_str += test.to_test()
         print(test_str)
-        tree = ast.parse(test.to_test())
+        tree = ast.parse(test_str)
         codeobj = compile(tree, filename="<ast>", mode="exec")
         start_time = time.time()
         if test.timeout > 0:
