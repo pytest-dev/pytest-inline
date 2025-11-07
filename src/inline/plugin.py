@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 from types import ModuleType
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from enum import Enum
 
 import pytest
 from _pytest.pathlib import fnmatch_ex
@@ -417,40 +418,62 @@ class ExtractInlineTest(ast.NodeTransformer):
         # 5) timeout (positive float)
         # 6) devices (str array)
         
+        class ConstrArgs(Enum):
+            TEST_NAME = 0
+            PARAMETERIZED = 1
+            REPEATED = 2
+            TAG_STR = 3
+            DISABLED = 4
+            TIMEOUT = 5
+            DEVICES = 6
+            
+        property_names = {
+            ConstrArgs.TEST_NAME : "test_name",
+            ConstrArgs.PARAMETERIZED : "parameterized",
+            ConstrArgs.REPEATED : "repeated",
+            ConstrArgs.TAG_STR : "tag",
+            ConstrArgs.DISABLED : "disabled",
+            ConstrArgs.TIMEOUT : "timeout",
+            ConstrArgs.DEVICES : "devices"
+        }
+            
+        pre_38_val_names = {
+            ConstrArgs.TEST_NAME : "s",
+            ConstrArgs.PARAMETERIZED : "value",
+            ConstrArgs.REPEATED : "n",
+            ConstrArgs.TAG_STR : "s",
+            ConstrArgs.DISABLED : "value",
+            ConstrArgs.TIMEOUT : "n",
+            ConstrArgs.DEVICES : ""
+        }
+                
+        pre_38_expec_ast_arg_type = {
+            ConstrArgs.TEST_NAME : ast.Str,
+            ConstrArgs.PARAMETERIZED : ast.NameConstant,
+            ConstrArgs.REPEATED : ast.Num,
+            ConstrArgs.TAG_STR : ast.List,
+            ConstrArgs.DISABLED : ast.NameConstant,
+            ConstrArgs.TIMEOUT : ast.Num,
+        }
+        
+        expected_ast_val_args = {
+            ConstrArgs.TEST_NAME : [str],
+            ConstrArgs.PARAMETERIZED : [bool],
+            ConstrArgs.REPEATED : [int],
+            ConstrArgs.TAG_STR : [ast.List],
+            ConstrArgs.DISABLED : [bool],
+            ConstrArgs.TIMEOUT : [float, int],
+            ConstrArgs.DEVICES : [str]
+        }
+        
         NUM_OF_ARGUMENTS = 7
         if len(node.args) + len(node.keywords) <= NUM_OF_ARGUMENTS:
             # positional arguments
             if sys.version_info >= (3, 8, 0):
+                # Arguments organized by expected ast type, value type, and index in that order
                 for index, arg in enumerate(node.args):
-                    # check if "test_name" is a string
-                    if index == 0 and isinstance(arg, ast.Constant) and isinstance(arg.value, str):
-                        # get the test name if exists
-                        self.cur_inline_test.test_name = arg.value
-                    # check if "parameterized" is a boolean
-                    elif index == 1 and isinstance(arg, ast.Constant) and isinstance(arg.value, bool):
-                        self.cur_inline_test.parameterized = arg.value
-                    # check if "repeated" is a positive integer
-                    elif index == 2 and isinstance(arg, ast.Constant) and isinstance(arg.value, int):
-                        if arg.value <= 0:
-                            raise MalformedException(f"inline test: {self.arg_repeated_str} must be greater than 0")
-                        self.cur_inline_test.repeated = arg.value
-                    elif index == 3 and isinstance(arg.value, ast.List):
-                        tags = []
-                        for elt in arg.value.elts:
-                            if not (isinstance(elt, ast.Constant) and isinstance(elt.value, str)):
-                                raise MalformedException(f"tag can only be List of string")
-                            tags.append(elt.value)
-                        self.cur_inline_test.tag = tags
-                    elif index == 4 and isinstance(arg, ast.Constant) and isinstance(arg.value, bool):
-                        self.cur_inline_test.disabled = arg.value
-                    elif (
-                        index == 5
-                        and isinstance(arg, ast.Constant)
-                        and (isinstance(arg.value, float) or isinstance(arg.value, int))
-                    ):
-                        self.cur_inline_test.timeout = arg.value
-                    
-                    elif index == 6 and isinstance(arg, ast.List):
+                    # Devices are not referenced in versions before 3.8; all other arguments can be from any version
+                    if index == ConstrArgs.DEVICES and isinstance(arg, ast.List):
                         devices = []
                         for elt in arg.elts:
                             if not (isinstance(elt, ast.Constant) and isinstance(elt.value, str)):
@@ -459,11 +482,51 @@ class ExtractInlineTest(ast.NodeTransformer):
                                 raise MalformedException(f"Invalid device: {elt.value}. Must be one of ['cpu', 'cuda', 'mps']")
                             devices.append(elt.value)
                         self.cur_inline_test.devices = devices
-
+                    # Assumes version is past 3.8, no explicit references to ast.Constant before 3.8
                     else:
-                        raise MalformedException(
-                            f"inline test: {self.class_name_str}() accepts {NUM_OF_ARGUMENTS} arguments. 'test_name' must be a string constant, 'parameterized' must be a boolean constant, 'repeated' must be a positive integer, 'tag' must be a list of string, 'timeout' must be a positive float"
-                        )
+                        corr_arg_type = False
+                        corr_val_type = False
+                        value_prop_name = ""
+                        
+                        if sys.version_info >= (3, 8, 0) and isinstance(arg, ast.Constant):
+                            corr_arg_type = True
+                            value_prop_name = "value"
+                        elif sys.version_info < (3, 8, 0) and isinstance(arg, pre_38_expec_ast_arg_type[index]):
+                            corr_arg_type = True
+                            value_prop_name = pre_38_val_names[index]
+                        
+                        # Verifies value types
+                        for arg_type in expected_ast_val_args[index]:
+                            if isinstance(arg.value, arg_type):
+                                corr_val_type = True
+                                break
+                        
+                        
+                        if corr_val_type and corr_arg_type:
+                            # Accounts for additional checks for REPEATED and TAG_STR arguments
+                            match index:
+                                case ConstrArgs.REPEATED:
+                                    if arg.value <= 0:
+                                        raise MalformedException(f"inline test: {self.arg_repeated_str} must be greater than 0")
+                                    self.cur_inline_test.repeated = getattr(arg, value_prop_name)
+                                case ConstrArgs.TAG_STR:
+                                    tags = []
+                                    for elt in arg.value.elts:
+                                        if not (isinstance(elt, ast.Constant) and isinstance(elt.value, str)):
+                                            raise MalformedException(f"tag can only be List of string")
+                                        tags.append(getattr(elt, value_prop_name))
+                                    self.cur_inline_test.tag = tags
+                                # For non-special cases, set the attribute defined by the dictionary
+                                case _:
+                                    setattr(self.cur_inline_test,
+                                            property_names[index],
+                                            getattr(arg, value_prop_name))
+                        else:
+                            raise MalformedException(
+                                f"inline test: {self.class_name_str}() accepts {NUM_OF_ARGUMENTS} arguments. 'test_name' must be a string constant, 'parameterized' must be a boolean constant, 'repeated' must be a positive integer, 'tag' must be a list of string, 'timeout' must be a positive float"
+                            )
+                            #raise MalformedException("Argument " + str(index) + " incorrectly formatted. Argument should be a " + ConstrArgs.expected_ast_val_args[index].type())
+                       
                 # keyword arguments
                 for keyword in node.keywords:
                     # check if "test_name" is a string
