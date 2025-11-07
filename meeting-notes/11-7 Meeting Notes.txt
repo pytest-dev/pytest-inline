@@ -1,0 +1,29 @@
+Cases where libraries are not installed:
+- Throw bad error message
+- Should be the developer's duty to set up their environment properly with the libraries they want to use
+- Add to pytest configuration file
+
+Devices would eventually be moved out of constructor
+For differential tests, we would introduce diff_input function
+
+diff_given():
+- Parameters:
+- Specific
+-- Passes in differential test inputs
+-- Want to eliminate the devices constructor; devices would only support specific inputs
+-- Supports any differential input variable to be given
+--- Example: testing on devices, written as diff_given(devices, ["cuda", "cpu"])
+--- Reference how given is written right now
+-- Would be from the inline test call itself
+-- Devices is only accepted first argument in diff_given
+--- Should be equivalent to what it was
+--- Can try to extend for any first argument
+-- Can be used together with given()
+--- Some variables shouldn't be given multiple values; not changing the values of multiple inputs
+--- Use given() to specific input value for some variables
+--- Use diff_given() for inputs that need to be varied
+-- Refer to project proposal for format
+-- Order can be varied
+
+Fork original repo, then copy changes over
+
