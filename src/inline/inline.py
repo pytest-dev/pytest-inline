@@ -35,6 +35,16 @@ class itest:
         """
         return self
 
+    def diff_given(self, variable, value):
+        """
+        Set value to a variable for differential testing.
+
+        :param variable: a variable name
+        :param value: a value that will be assigned to the variable
+        :returns: Inline object
+        """
+        return self
+
     def check_eq(self, actual_value, expected_value):
         """
         Assert whether two values equal
