@@ -443,7 +443,7 @@ class ExtractInlineTest(ast.NodeTransformer):
                 keyword_args.append(None)
            
             for keyword in node.keywords:
-                keyword_args[keyword_idxs[keyword.arg].value] = keyword.value
+                keyword_args[keyword_idxs[keyword.arg]] = keyword.value
             self.parse_constructor_args(keyword_args)
 
 

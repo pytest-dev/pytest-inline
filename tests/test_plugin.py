@@ -3,8 +3,8 @@ from _pytest.pytester import Pytester
 import pytest
 
 # For testing in Spyder only
-# if __name__ == "__main__":
-#     pytest.main(['-v', '-s']) 
+if __name__ == "__main__":
+    pytest.main(['-v', '-s']) 
 
 
 # pytest -p pytester
