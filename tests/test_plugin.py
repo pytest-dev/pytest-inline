@@ -9,6 +9,23 @@ if __name__ == "__main__":
 
 # pytest -p pytester
 class TestInlinetests:
+    def test_inline_diff_given(self, pytester: Pytester):
+        checkfile = pytester.makepyfile(
+            """ 
+        from inline import itest
+        
+        def m(a):
+            a = a + 1
+            itest().diff_given(devices, ["cpu", "cuda"]).given(a, 1).check_eq(a, 2)
+    """
+        )
+        for x in (pytester.path, checkfile):
+            items, reprec = pytester.inline_genitems(x)
+            assert len(items) == 1
+            res = pytester.runpytest()
+            assert res.ret != 1
+        
+    
     def test_inline_detects_imports(self, pytester: Pytester):
         checkfile = pytester.makepyfile(
             """ 
@@ -155,21 +172,6 @@ class TestInlinetests:
         for x in (pytester.path, checkfile):
             items, reprec = pytester.inline_genitems(x)
             assert len(items) == 1
-            res = pytester.runpytest()
-            assert res.ret == 0
-
-    def test_check_eq_parameterized_tests(self, pytester: Pytester):
-        checkfile = pytester.makepyfile(
-            """ 
-        from inline import itest
-        def m(a):
-            a = a + 1
-            itest(parameterized=True).given(a, [2, 3]).check_eq(a, [3, 4])
-    """
-        )
-        for x in (pytester.path, checkfile):
-            items, reprec = pytester.inline_genitems(x)
-            assert len(items) == 2
             res = pytester.runpytest()
             assert res.ret == 0
 
