@@ -1,0 +1,16 @@
+Split progress so far, and push each as a separate request:
+- Constructor
+- Imports
+- Diff Given
+
+-Start another fork on the original pytest-inline repo
+-Put constructor changes onto new fork
+-Push request
+-Repeat for other two components
+
+Diff Given:
+- Multiple scenes to worry about
+- May need to up the best version, then develop off that
+
+Clean up as separate requests, push them, then add more concrete tests for more inline tests
+- More tests from constructor to inline
