@@ -845,14 +845,14 @@ class ExtractInlineTest(ast.NodeTransformer):
         
         if len(node.args) == 2:
             if self.cur_inline_test.parameterized:
-                pass
+                raise MalformedException("inline test: diff_given() does not currently support parameterized inline tests.")
             else:
                 devices = []
                 for elt in node.args[VALUES].elts:
                     if elt.value not in {"cpu", "cuda", "mps"}:
                         raise MalformedException(f"Invalid device: {elt.value}. Must be one of ['cpu', 'cuda', 'mps']")
                     devices.append(elt.value)
-                self.cur_inline_test.devices = devices
+                setattr(self.cur_inline_test, node.args[PROPERTY].id, devices)
         else:
             raise MalformedException("inline test: invalid diff_given(), expected 2 args")
 
@@ -1497,10 +1497,6 @@ class ExtractInlineTest(ast.NodeTransformer):
                         inline_test_call_index += 1
             else:
                 break
-
-       
-        else:
-            break
 
         for import_stmt in import_calls:
             self.cur_inline_test.import_stmts.append(import_stmt)
