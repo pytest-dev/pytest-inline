@@ -300,6 +300,7 @@ class ExtractInlineTest(ast.NodeTransformer):
     check_not_same = "check_not_same"
     fail_str = "fail"
     given_str = "given"
+    diff_given_str = "diff_given"
     group_str = "Group"
     arg_test_name_str = "test_name"
     arg_parameterized_str = "parameterized"
@@ -837,6 +838,23 @@ class ExtractInlineTest(ast.NodeTransformer):
                 self.cur_inline_test.given_stmts.append(assign_node)
         else:
             raise MalformedException("inline test: invalid given(), expected 2 args")
+
+    def parse_diff_given(self, node):
+        PROPERTY = 0
+        VALUES = 1
+        
+        if len(node.args) == 2:
+            if self.cur_inline_test.parameterized:
+                pass
+            else:
+                devices = []
+                for elt in node.args[VALUES].elts:
+                    if elt.value not in {"cpu", "cuda", "mps"}:
+                        raise MalformedException(f"Invalid device: {elt.value}. Must be one of ['cpu', 'cuda', 'mps']")
+                    devices.append(elt.value)
+                self.cur_inline_test.devices = devices
+        else:
+            raise MalformedException("inline test: invalid diff_given(), expected 2 args")
 
     def parse_assume(self, node):
         if len(node.args) == 1:
@@ -1466,13 +1484,23 @@ class ExtractInlineTest(ast.NodeTransformer):
                 self.parse_assume(call)
                 inline_test_call_index += 1
 
-        # "given(a, 1)"
         for call in inline_test_calls[inline_test_call_index:]:
-            if isinstance(call.func, ast.Attribute) and call.func.attr == self.given_str:
-                self.parse_given(call)
-                inline_test_call_index += 1
+            if isinstance(call.func, ast.Attribute):
+                match call.func.attr:
+                    # "given(a, 1)"
+                    case self.given_str:
+                        self.parse_given(call)
+                        inline_test_call_index += 1
+                     # "diff_given(devices, ["cpu", "cuda"])"
+                    case self.diff_given_str:
+                        self.parse_diff_given(call)
+                        inline_test_call_index += 1
             else:
                 break
+
+       
+        else:
+            break
 
         for import_stmt in import_calls:
             self.cur_inline_test.import_stmts.append(import_stmt)
