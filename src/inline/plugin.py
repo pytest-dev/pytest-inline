@@ -554,23 +554,42 @@ class ExtractInlineTest(ast.NodeTransformer):
                 
                 if corr_val_type and corr_arg_type:
                     # Accounts for additional checks for REPEATED and TAG_STR arguments
-                    match arg_idx:
-                        case ConstrArgs.REPEATED:
-                            if arg.value <= 0:
-                                raise MalformedException(f"inline test: {self.arg_repeated_str} must be greater than 0")
-                            self.cur_inline_test.repeated = getattr(arg, value_prop_name)
-                        case ConstrArgs.TAG_STR:
-                            tags = []
-                            for elt in arg.elts:
-                                if not (isinstance(elt, ast.Constant) and isinstance(elt.value, str)):
-                                    raise MalformedException(f"tag can only be List of string")
-                                tags.append(getattr(elt, value_prop_name))
-                            self.cur_inline_test.tag = tags
-                        # For non-special cases, set the attribute defined by the dictionary
-                        case _:
-                            setattr(self.cur_inline_test,
-                                    property_names[arg_idx],
-                                    getattr(arg, value_prop_name))
+                    if arg_idx == ConstrArgs.REPEATED:
+                        if arg.value <= 0:
+                            raise MalformedException(f"inline test: {self.arg_repeated_str} must be greater than 0")
+                        self.cur_inline_test.repeated = getattr(arg, value_prop_name)
+                    elif arg_idx == ConstrArgs.TAG_STR:
+                        tags = []
+                        for elt in arg.elts:
+                            if not (isinstance(elt, ast.Constant) and isinstance(elt.value, str)):
+                                raise MalformedException(f"tag can only be List of string")
+                            tags.append(getattr(elt, value_prop_name))
+                        self.cur_inline_test.tag = tags
+                    # For non-special cases, set the attribute defined by the dictionary
+                    else:
+                        setattr(self.cur_inline_test,
+                                property_names[arg_idx],
+                                getattr(arg, value_prop_name))
+                    
+                   
+                    
+                    # match arg_idx:
+                    #     case ConstrArgs.REPEATED:
+                    #         if arg.value <= 0:
+                    #             raise MalformedException(f"inline test: {self.arg_repeated_str} must be greater than 0")
+                    #         self.cur_inline_test.repeated = getattr(arg, value_prop_name)
+                    #     case ConstrArgs.TAG_STR:
+                    #         tags = []
+                    #         for elt in arg.elts:
+                    #             if not (isinstance(elt, ast.Constant) and isinstance(elt.value, str)):
+                    #                 raise MalformedException(f"tag can only be List of string")
+                    #             tags.append(getattr(elt, value_prop_name))
+                    #         self.cur_inline_test.tag = tags
+                    #     # For non-special cases, set the attribute defined by the dictionary
+                    #     case _:
+                    #         setattr(self.cur_inline_test,
+                    #                 property_names[arg_idx],
+                    #                 getattr(arg, value_prop_name))
                 else:
                     raise MalformedException(
                         f"inline test: {self.class_name_str}() accepts {NUM_OF_ARGUMENTS} arguments. 'test_name' must be a string constant, 'parameterized' must be a boolean constant, 'repeated' must be a positive integer, 'tag' must be a list of string, 'timeout' must be a positive float"
@@ -1243,15 +1262,22 @@ class ExtractInlineTest(ast.NodeTransformer):
 
         for call in inline_test_calls[inline_test_call_index:]:
             if isinstance(call.func, ast.Attribute):
-                match call.func.attr:
-                    # "given(a, 1)"
-                    case self.given_str:
-                        self.parse_given(call)
-                        inline_test_call_index += 1
-                     # "diff_given(devices, ["cpu", "cuda"])"
-                    case self.diff_given_str:
-                        self.parse_diff_given(call)
-                        inline_test_call_index += 1
+                if call.func.attr == self.given_str:
+                    self.parse_given(call)
+                    inline_test_call_index += 1
+                elif call.func.attr == self.diff_given_str:
+                    self.parse_diff_given(call)
+                    inline_test_call_index += 1
+                
+                # match call.func.attr:
+                #     # "given(a, 1)"
+                #     case self.given_str:
+                #         self.parse_given(call)
+                #         inline_test_call_index += 1
+                #      # "diff_given(devices, ["cpu", "cuda"])"
+                #     case self.diff_given_str:
+                #         self.parse_diff_given(call)
+                #         inline_test_call_index += 1
             else:
                 break
 
