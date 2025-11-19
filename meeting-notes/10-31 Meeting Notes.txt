@@ -1,0 +1,27 @@
+- Are tests run directly after parsing, or are they amended to a file first?
+-- Ad hoc file
+
+- Need more information on the control flow of the module?
+-- Will ask
+-- Entry point is VisitExpr
+--- Traverses ast tree, if current node is expr, it triggers the function
+--- If the expression is an inline test class, it starts with itest() and will trigger past inline test
+
+- Where does module determine that a line in the module is an inline test?
+-- Will collect all calls and will keep collect all relevant st nodes in file; at some point, will try to pass nodes into inline tests
+
+- What is the root node of the ast in collect_inline_test_calls()?
+-- Inline test expression
+-- Inline tests are generated separately with each individual itest() call
+
+# Ideas
+- Find should return list of tests AND imports
+- Add import_list to ExtractInlineTest class; would search for imports in the module at the same time as inline tests
+- Furthermore, collect import calls while collecting ineline_test_calls in "parse_inline_test"
+- From research, found that you could get list of imports loaded by module by getting intersection between system modules and module imports, though that would be redundant since we can just access the source code directly
+- Can define strings for "import", "from", and "as"; would like to know if ast's group code by line
+
+
+Import statements may be in classes or functions
+
+Add references to imported libraries to ensure they are imported properly

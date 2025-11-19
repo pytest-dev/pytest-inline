@@ -10,6 +10,7 @@ class itest:
         tag: List = [],
         disabled: bool = False,
         timeout: float = -1.0,
+        devices: List = None,  
     ):
         """
         Initialize Inline object with test name / parametrized flag
@@ -20,11 +21,23 @@ class itest:
         :param tag: tags to group tests
         :param disabled: whether the test is disabled
         :param timeout: seconds to timeout the test, must be a float
+        :param devices: list of devices to run differential testing on (e.g., ["cpu", "cuda", "mps"])
+                   if None, differential testing is disabled
         """
 
     def given(self, variable, value):
         """
         Set value to a variable.
+
+        :param variable: a variable name
+        :param value: a value that will be assigned to the variable
+        :returns: Inline object
+        """
+        return self
+
+    def diff_given(self, variable, value):
+        """
+        Set value to a variable for differential testing.
 
         :param variable: a variable name
         :param value: a value that will be assigned to the variable
@@ -40,6 +53,19 @@ class itest:
         :param expected_value: expected value
         :returns: Inline object
         :raises: AssertionError
+        """
+        return self
+    
+    def diff_test(self, outputs):
+        """
+        Assert whether outputs are consistent across different devices.
+        This method compares the outputs from different devices specified in the constructor.
+
+        :param outputs: a dictionary mapping device names to their outputs, or a single output value
+                       if a single value is provided, the test will run the computation on all devices
+                       and compare against this reference value
+        :returns: Inline object
+        :raises: AssertionError if outputs differ across devices
         """
         return self
 

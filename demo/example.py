@@ -17,7 +17,7 @@ def get_assignment_map_from_checkpoint(tvars, init_checkpoint):
         # inline test
         itest().given(name, "a:0").check_eq(m.group(1), "a")
         # a failing inline test
-        # itest().given(name, "a:0").check_eq(m.group(1), "aaa")
+       # itest().given(name, "a:0").check_eq(m.group(1), "aaa")
         if m is not None:
             name = m.group(1)
         name_to_variable[name] = var
