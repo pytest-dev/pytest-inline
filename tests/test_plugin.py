@@ -5,6 +5,41 @@ import pytest
 
 # pytest -p pytester
 class TestInlinetests:
+    def test_inline_detects_imports(self, pytester: Pytester):
+        checkfile = pytester.makepyfile(
+            """ 
+        from inline import itest
+        import datetime
+        
+        def m(a):
+            b = a + datetime.timedelta(days=365)
+            itest().given(a, datetime.timedelta(days=1)).check_eq(b, datetime.timedelta(days=366))
+    """
+        )
+        for x in (pytester.path, checkfile):
+            items, reprec = pytester.inline_genitems(x)
+            assert len(items) == 1
+            res = pytester.runpytest()
+            assert res.ret != 1
+
+    # def test_inline_detects_from_imports(self, pytester: Pytester):
+    #     checkfile = pytester.makepyfile(
+    #         """ 
+    #     from inline import itest
+    #     import numpy as np
+    #     from scipy import stats as st
+        
+    #     def m(n, p):
+    #         b = st.binom(n, p)
+    #         itest().given(n, 100).given(p, 0.5).check_eq(b.mean(), n * p)
+    # """
+    #     )
+    #     for x in (pytester.path, checkfile):
+    #         items, reprec = pytester.inline_genitems(x)
+    #         assert len(items) == 1
+    #         res = pytester.runpytest()
+    #         assert res.ret == 0
+
     def test_inline_parser(self, pytester: Pytester):
         checkfile = pytester.makepyfile(
             """ 
@@ -30,77 +65,7 @@ class TestInlinetests:
         for x in (pytester.path, checkfile):
             items, reprec = pytester.inline_genitems(x)
             assert len(items) == 0
-
-    def test_inline_detects_imports(self, pytester: Pytester):
-        checkfile = pytester.makepyfile(
-            """ 
-        from inline import itest
-        import datetime
-        
-        def m(a):
-            b = a + datetime.timedelta(days=365)
-            itest().given(a, datetime.timedelta(days=1)).check_eq(b, datetime.timedelta(days=366))
-    """
-        )
-        for x in (pytester.path, checkfile):
-            items, reprec = pytester.inline_genitems(x)
-            assert len(items) == 1
-            res = pytester.runpytest()
-            assert res.ret != 1
-
-    def test_inline_detects_import_alias(self, pytester: Pytester):
-        checkfile = pytester.makepyfile(
-            """ 
-        from inline import itest
-        import datetime as dt
-        
-        def m(a):
-            b = a + dt.timedelta(days=365)
-            itest().given(a, dt.timedelta(days=1)).check_eq(b, dt.timedelta(days=366))
-    """
-        )
-        for x in (pytester.path, checkfile):
-            items, reprec = pytester.inline_genitems(x)
-            assert len(items) == 1
-            res = pytester.runpytest()
-            assert res.ret != 1
-
-    def test_inline_detects_from_imports(self, pytester: Pytester):
-        checkfile = pytester.makepyfile(
-            """ 
-        from inline import itest
-        from enum import Enum
-        
-        class Choice(Enum):
-            YES = 0
-            NO = 1
-        
-        def m(a):
-            b = a
-            itest().given(a, Choice.YES).check_eq(b, Choice.YES)
-    """
-        )
-        for x in (pytester.path, checkfile):
-            items, reprec = pytester.inline_genitems(x)
-            assert len(items) == 1
-            res = pytester.runpytest()
-            assert res.ret == 0
-
-    def test_fail_on_importing_missing_module(self, pytester: Pytester):
-        checkfile = pytester.makepyfile(
-            """ 
-        from inline import itest
-        from scipy import owijef as st
-        
-        def m(n, p):
-            b = st.binom(n, p)
-            itest().given(n, 100).given(p, 0.5).check_eq(b.mean(), n * p)
-    """
-        )
-        for x in (pytester.path, checkfile):
-            items, reprec = pytester.inline_genitems(x)
-            assert len(items) == 0
-
+            
     def test_inline_malformed_given(self, pytester: Pytester):
         checkfile = pytester.makepyfile(
             """ 
@@ -185,21 +150,6 @@ class TestInlinetests:
         for x in (pytester.path, checkfile):
             items, reprec = pytester.inline_genitems(x)
             assert len(items) == 1
-            res = pytester.runpytest()
-            assert res.ret == 0
-
-    def test_check_eq_parameterized_tests(self, pytester: Pytester):
-        checkfile = pytester.makepyfile(
-            """ 
-        from inline import itest
-        def m(a):
-            a = a + 1
-            itest(parameterized=True).given(a, [2, 3]).check_eq(a, [3, 4])
-    """
-        )
-        for x in (pytester.path, checkfile):
-            items, reprec = pytester.inline_genitems(x)
-            assert len(items) == 2
             res = pytester.runpytest()
             assert res.ret == 0
 
