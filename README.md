@@ -130,13 +130,13 @@ Only one test oracle can be specified for a given inline test call.
 
 Inline tests are generally fast to run, as each inline test only checks one statement.  Note that inline tests behave as empty function calls when not running tests, and the overhead of having them in production code is negligible.
 
-We have evaluated the performance of pytest-inline on a [dataset](https://github.com/EngineeringSoftware/inlinetest/tree/main/data/examples/python) of 87 inline tests we wrote for 80 statements in 50 examples from 31 open-source projects.  The main findings are summarized below, and please see [our paper][paper-url] for more details.  We performed 3 experiments:
+We have evaluated the performance of pytest-inline on a [dataset](https://github.com/EngineeringSoftware/inlinetest/tree/main/data/examples/python) of 87 inline tests we wrote for 80 statements in 50 examples from 31 open-source projects.  The main findings are summarized below, and please see [our paper](https://dl.acm.org/doi/abs/10.1145/3551349.3556952) for more details.  We performed 3 experiments:
 
-1. Running inline tests in standalone mode.  Each inline test took 0.147s on average.  Most time is spent on startup and parsing the file, which can be aromatized if there are more inline tests per file.  As such, we also duplicated the inline tests for 10, 100, 1000 times, and the average time per inline test dropped to 0.015s, 0.002s, 0.001s.
+1. Running inline tests in standalone mode.  Each inline test took 0.147s on average.  Most time is spent on startup and parsing the file, which can be amortized if there are more inline tests per file.  As such, we also duplicated the inline tests for 10, 100, 1000 times, and the average time per inline test dropped to 0.015s, 0.002s, 0.001s.
 
-2. Running inline tests together with unit tests. The average overhead compared to running only the unit tests was only 0.007x.  Even when duplicating the inline tests for 1000 times (such that the total number of inline tests match the total number of unit tests), the average overhead was only 0.088x.
+2. Running inline tests together with unit tests. The average overhead compared to running only the unit tests was only 0.007x.  Even when duplicating the inline tests 1000 times (such that the total number of inline tests match the total number of unit tests), the average overhead was only 0.088x.
 
-3. Running inline tests together with unit tests, but disable pytest-inline.  This is to simulate the cost of having inline tests in production code.  The overhead was negligible: the number we got when not duplicating inline tests was -0.001x (due to noise), and only raised to 0.019x when duplicating the inline tests for 1000 times.
+3. Running inline tests together with unit tests, but disable pytest-inline.  This is to simulate the cost of having inline tests in production code.  The overhead was negligible: the number we got when not duplicating inline tests was -0.001x (due to noise), and only raised to 0.019x when duplicating the inline tests 1000 times.
 
 All APIs for inline testing behave as empty function calls in non-testing mode by always returning a dummy object, for example, check\_eq is defined as: `def check_eq(self, ...): return self`.  This usually incurs negligible overhead as we have observed in our experiments, but note that the cost is paid each time an inline test is encountered during execution, so it may add up if the inline test is in a part of code that will be executed many times (e.g., a loop).
 
